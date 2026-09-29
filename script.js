@@ -99,8 +99,8 @@ let wheelSpinning = false;
 // hit.mp3 phải nằm cùng thư mục với index.html.
 
 const bgMusic = new Audio();
-
 const hitSound = new Audio("hit.mp3");
+const questionSound = new Audio("question.mp3");
 
 bgMusic.preload = "auto";
 bgMusic.loop = true;
@@ -109,6 +109,8 @@ bgMusic.volume = 0.30;
 hitSound.preload = "auto";
 hitSound.volume = 0.78;
 
+questionSound.preload = "auto";
+questionSound.volume = 0.85;
 
 // Thử music.mp3 trước.
 // Nếu không có thì thử music(1).mp3.
@@ -247,7 +249,18 @@ function playHitSound() {
     safePlay(hitSound);
 
 }
+function playQuestionSound() {
 
+    try {
+        questionSound.currentTime = 0;
+    }
+
+    catch (error) {
+    }
+
+    safePlay(questionSound);
+
+}
 
 // ================================
 // HẠ NHẠC KHI HIỆN CÂU HỎI
@@ -2104,6 +2117,7 @@ function showQuestion() {
 
     // Hạ âm lượng nhạc.
     duckMusic();
+    playQuestionSound();
 
 
     createQuestionModal();
@@ -2363,6 +2377,15 @@ function answerQuestion(
 // ================================
 
 function closeQuestion() {
+    try {
+
+    questionSound.pause();
+    questionSound.currentTime = 0;
+
+}
+
+catch (error) {
+}
 
     clearTimeout(
         questionAnswerTimeout
@@ -3761,6 +3784,12 @@ function endGame() {
     // =================================
 
     stopBackgroundMusic();
+    try {
+
+    questionSound.pause();
+    questionSound.currentTime = 0;}
+
+    catch (error) {}
 
 
     // =================================
@@ -4128,6 +4157,13 @@ function restartGame() {
     // =================================
 
     stopBackgroundMusic();
+    try {
+
+    questionSound.pause();
+    questionSound.currentTime = 0;}
+
+    catch (error) {
+    }
 
 
     // =================================
