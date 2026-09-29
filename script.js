@@ -233,6 +233,7 @@ function stopBackgroundMusic() {
 // ================================
 
 function playHitSound() {
+    
 
     try {
 
@@ -249,18 +250,7 @@ function playHitSound() {
     safePlay(hitSound);
 
 }
-function playQuestionSound() {
 
-    try {
-        questionSound.currentTime = 0;
-    }
-
-    catch (error) {
-    }
-
-    safePlay(questionSound);
-
-}
 
 // ================================
 // HẠ NHẠC KHI HIỆN CÂU HỎI
@@ -2117,7 +2107,6 @@ function showQuestion() {
 
     // Hạ âm lượng nhạc.
     duckMusic();
-    playQuestionSound();
 
 
     createQuestionModal();
@@ -2377,15 +2366,6 @@ function answerQuestion(
 // ================================
 
 function closeQuestion() {
-    try {
-
-    questionSound.pause();
-    questionSound.currentTime = 0;
-
-}
-
-catch (error) {
-}
 
     clearTimeout(
         questionAnswerTimeout
@@ -3784,12 +3764,6 @@ function endGame() {
     // =================================
 
     stopBackgroundMusic();
-    try {
-
-    questionSound.pause();
-    questionSound.currentTime = 0;}
-
-    catch (error) {}
 
 
     // =================================
@@ -4157,13 +4131,6 @@ function restartGame() {
     // =================================
 
     stopBackgroundMusic();
-    try {
-
-    questionSound.pause();
-    questionSound.currentTime = 0;}
-
-    catch (error) {
-    }
 
 
     // =================================
