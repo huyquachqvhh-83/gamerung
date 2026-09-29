@@ -74,90 +74,121 @@ let gameEnded = false;
 // ================================
 
 const questions = [
-
     {
-        question: "2 + 3 = ?",
-        answers: ["4", "5", "6", "7"],
+        question: "CLB Taekwondo OTC chính thức được thành lập vào ngày, tháng, năm nào?",
+        answers: ["19/03/2012", "19/03/2015", "19/03/2018", "19/03/2020"],
         correct: 1
     },
-
     {
-        question: "Thủ đô của Việt Nam là gì?",
+        question: "Tên viết tắt tiếng Anh của Trường Đại học Mở TP.HCM là gì?",
+        answers: ["OU", "OUM", "HCMCOU", "UHM"],
+        correct: 2
+    },
+    {
+        question: 'Tên viết tắt "OTC" của câu lạc bộ có ý nghĩa chính thức là gì?',
         answers: [
-            "Hà Nội",
-            "Đà Nẵng",
-            "Huế",
-            "TP. Hồ Chí Minh"
+            "Open Taekwondo Club",
+            "Only Taekwondo Connection",
+            "One Team Connection",
+            "Olympic Taekwondo Club"
+        ],
+        correct: 2
+    },
+    {
+        question: "Trường Đại học Mở TP.HCM thuộc loại hình trường nào?",
+        answers: ["Công lập", "Dân lập", "Tư thục", "Quốc tế"],
+        correct: 0
+    },
+    {
+        question: "Giải đấu thể thao truyền thống lớn nhất dành cho sinh viên toàn trường tên là gì?",
+        answers: [
+            "Hội thao OU",
+            "Olympic OU",
+            "OU Champions League",
+            "Giải bóng đá sinh viên Mở"
         ],
         correct: 0
     },
-
     {
-        question: "1 byte bằng bao nhiêu bit?",
+        question: "Đâu là 4 giá trị cốt lõi trong bộ nhận diện thương hiệu của CLB OTC?",
         answers: [
-            "4 bit",
-            "8 bit",
-            "16 bit",
-            "32 bit"
+            "Honor – Strength – Mindset – Unity",
+            "Honor – Courtesy – Mindset – One Unity",
+            "Respect – Discipline – Mindset – Connection",
+            "Courage – Courtesy – Wisdom – One Unity"
         ],
         correct: 1
     },
-
     {
-        question: "HTML dùng để làm gì?",
+        question: "Lịch tập định kỳ của CLB OTC diễn ra vào những ngày nào?",
         answers: [
-            "Tạo cấu trúc trang web",
-            "Chỉnh sửa ảnh",
-            "Lập trình vi điều khiển",
-            "Quản lý cơ sở dữ liệu"
-        ],
-        correct: 0
-    },
-
-    {
-        question: "CSS chủ yếu dùng để làm gì?",
-        answers: [
-            "Tạo cơ sở dữ liệu",
-            "Thiết kế giao diện",
-            "Tạo máy chủ",
-            "Xử lý âm thanh"
+            "Thứ 3, 5, 7",
+            "Thứ 2, 4, 6",
+            "Thứ Bảy, Chủ Nhật",
+            "Mỗi ngày trong tuần"
         ],
         correct: 1
     },
-
     {
-        question: "5 × 4 = ?",
+        question: "Đối tượng nào có thể đăng ký tham gia CLB Taekwondo OTC?",
         answers: [
-            "15",
-            "20",
-            "25",
-            "30"
+            "Dành cho người đã từng học võ Taekwondo",
+            "Dành riêng cho tân sinh viên của trường OU",
+            "Dành cho nam sinh viên có thể lực tốt",
+            "Tất cả các bạn yêu thích võ thuật và các bạn chưa từng học võ"
+        ],
+        correct: 3
+    },
+    {
+        question: "Ưu đãi dành cho thành viên mới tham gia OTC là gì?",
+        answers: [
+            "Tặng võ phục miễn phí",
+            "Miễn phí tháng đầu tiên",
+            "Giảm 50% tiền thi đai",
+            "Giảm 50% tiền võ phục"
         ],
         correct: 1
     },
-
     {
-        question: "JavaScript thường dùng để làm gì trên web?",
+        question: "Đâu KHÔNG phải là giá trị cốt lõi của CLB OTC?",
         answers: [
-            "Tạo tương tác",
-            "In tài liệu",
-            "Thay thế màn hình",
-            "Tạo nguồn điện"
+            "Honor",
+            "Courtesy",
+            "Mindset",
+            "Money"
+        ],
+        correct: 3
+    },
+    {
+        question: "Địa chỉ sân tập chính thức của CLB OTC ở đâu?",
+        answers: [
+            "97 Võ Văn Tần, Q.3",
+            "371 Nguyễn Kiệm, Gò Vấp",
+            "35 Hồ Hảo Hớn, Q.1",
+            "02 Nguyễn Bỉnh Khiêm, Q.1"
         ],
         correct: 0
     },
-
     {
-        question: "CPU là viết tắt của?",
+        question: "Khung giờ tập luyện chính thức của CLB OTC là khi nào?",
         answers: [
-            "Central Processing Unit",
-            "Computer Personal Unit",
-            "Central Program Utility",
-            "Control Processing User"
+            "15h00 - 17h00",
+            "17h00 - 19h00",
+            "18h00 - 20h00",
+            "19h30 - 21h30"
         ],
-        correct: 0
+        correct: 2
+    },
+    {
+        question: "Ngoài võ thuật, câu lạc bộ OTC chú trọng phát triển điều gì nhất cho võ sinh?",
+        answers: [
+            "Khả năng ca hát và nghệ thuật",
+            "Sức khỏe, tính kỷ luật và kỹ năng mềm",
+            "Kỹ năng lập trình máy tính",
+            "Cách kinh doanh và khởi nghiệp"
+        ],
+        correct: 1
     }
-
 ];
 
 
