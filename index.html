@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Chưởng Gà</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <!-- =========================
+         MÀN HÌNH GAME
+    ========================== -->
+
+    <div id="gameScreen" class="screen">
+
+        <div class="top-bar">
+
+            <div class="game-title">
+                🐔 CHƯỞNG GÀ
+            </div>
+
+            <div class="info">
+                <div>
+                    Điểm
+                    <strong id="score">0</strong>
+                </div>
+
+                <div>
+                    Thời gian
+                    <strong id="timer">15</strong>
+                </div>
+
+                <div>
+                    Lượt quay
+                    <strong id="spinCount">0</strong>
+                </div>
+            </div>
+
+        </div>
+
+
+        <div id="gameArea">
+
+            <!-- Gà sẽ được JavaScript tạo ở đây -->
+
+            <div id="startMessage">
+                <div class="big-chicken">🐔</div>
+
+                <h1>CHƯỞNG GÀ</h1>
+
+                <p>
+                    Chưởng càng nhiều gà<br>
+                    càng có nhiều lượt quay!
+                </p>
+
+                <button id="startButton">
+                    BẮT ĐẦU
+                </button>
+            </div>
+
+        </div>
+
+
+        <div class="bottom-info">
+
+            <span>
+                🐔 Mỗi con gà = +1 điểm
+            </span>
+
+            <span>
+                🎡 5 điểm = 1 lượt quay
+            </span>
+
+        </div>
+
+    </div>
+
+
+    <!-- =========================
+         MÀN HÌNH KẾT THÚC
+    ========================== -->
+
+    <div id="resultScreen" class="screen hidden">
+
+        <div class="result-box">
+
+            <div class="result-icon">
+                🎉
+            </div>
+
+            <h1>HẾT GIỜ!</h1>
+
+            <p>Bạn đã chưởng được</p>
+
+            <div class="final-score">
+                <span id="finalScore">0</span>
+                <small>điểm</small>
+            </div>
+
+            <div class="earned-spin">
+
+                🎡
+
+                Bạn nhận được
+
+                <strong id="finalSpinCount">
+                    0
+                </strong>
+
+                lượt quay
+
+            </div>
+
+            <button id="goWheelButton">
+                ĐI TỚI VÒNG QUAY 🎡
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- =========================
+         MÀN HÌNH VÒNG QUAY
+    ========================== -->
+
+    <div id="wheelScreen" class="screen hidden">
+
+        <div class="wheel-container">
+
+            <h1>🎡 VÒNG QUAY MAY MẮN</h1>
+
+            <p>
+                Lượt quay còn lại:
+                <strong id="remainingSpin">0</strong>
+            </p>
+
+
+            <div class="wheel-wrapper">
+
+                <div class="pointer">
+                    ▼
+                </div>
+
+                <div id="wheel">
+
+                    <div class="wheel-item item1">
+                        🎁 QUÀ
+                    </div>
+
+                    <div class="wheel-item item2">
+                        ⭐ +10
+                    </div>
+
+                    <div class="wheel-item item3">
+                        🎁 QUÀ
+                    </div>
+
+                    <div class="wheel-item item4">
+                        🍀 MAY MẮN
+                    </div>
+
+                    <div class="wheel-item item5">
+                        🎁 QUÀ
+                    </div>
+
+                    <div class="wheel-item item6">
+                        💰 +20
+                    </div>
+
+                    <div class="wheel-item item7">
+                        🎁 QUÀ
+                    </div>
+
+                    <div class="wheel-item item8">
+                        🏆 JACKPOT
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <div id="prizeResult" class="prize-result hidden">
+
+                🎉
+
+                <span id="prizeText"></span>
+
+            </div>
+
+
+            <button
+                id="spinButton"
+                class="spin-button">
+
+                🎡 QUAY
+
+            </button>
+
+
+            <button
+                id="restartButton"
+                class="restart-button">
+
+                🔄 CHƠI LẠI
+
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <script src="script.js"></script>
+
+</body>
+</html>
