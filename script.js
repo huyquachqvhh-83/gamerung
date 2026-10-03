@@ -12,8 +12,13 @@
    - Gà bám theo beat của nhạc
    - Cuối game tăng tốc mạnh
 ========================================================= */
-
-
+<button class="delete-user-button">🗑️ Xóa</button>
+const { error } = await supabaseClient.rpc(
+    "admin_delete_profile",
+    {
+        target_user_id: userId
+    }
+);
 /* =========================================================
    1. SUPABASE CONFIG
 ========================================================= */
