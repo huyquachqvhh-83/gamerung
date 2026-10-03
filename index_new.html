@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Chưởng Gà</title>
+
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body>
+
+<!-- =========================================================
+     AUTH SCREEN
+========================================================= -->
+
+<section id="authScreen" class="screen active">
+
+    <div class="auth-background">
+
+        <div class="auth-sun">☀️</div>
+
+        <div class="auth-cloud cloud-1">☁️</div>
+        <div class="auth-cloud cloud-2">☁️</div>
+
+        <div class="auth-container">
+
+            <div class="auth-logo">
+                🐔
+            </div>
+
+            <h1>CHƯỞNG GÀ</h1>
+
+            <p class="auth-subtitle">
+                Ai chưởng nhanh hơn?
+            </p>
+
+
+            <div class="auth-card">
+
+                <!-- TAB -->
+
+                <div class="auth-tabs">
+
+                    <button
+                        id="loginTab"
+                        class="auth-tab active"
+                        type="button"
+                    >
+                        ĐĂNG NHẬP
+                    </button>
+
+                    <button
+                        id="registerTab"
+                        class="auth-tab"
+                        type="button"
+                    >
+                        ĐĂNG KÝ
+                    </button>
+
+                </div>
+
+
+                <!-- =================================================
+                     LOGIN
+                ================================================== -->
+
+                <form
+                    id="loginForm"
+                    class="auth-form"
+                >
+
+                    <div class="form-group">
+
+                        <label for="loginUsername">
+                            👤 Tên tài khoản
+                        </label>
+
+                        <input
+                            id="loginUsername"
+                            type="text"
+                            placeholder="Nhập tên tài khoản"
+                            autocomplete="username"
+                            maxlength="20"
+                            required
+                        >
+
+                    </div>
+
+
+                    <div class="form-group">
+
+                        <label for="loginPassword">
+                            🔒 Mật khẩu
+                        </label>
+
+                        <input
+                            id="loginPassword"
+                            type="password"
+                            placeholder="Nhập mật khẩu"
+                            autocomplete="current-password"
+                            required
+                        >
+
+                    </div>
+
+
+                    <button
+                        type="submit"
+                        class="auth-submit"
+                    >
+                        VÀO CHƠI 🐔
+                    </button>
+
+                </form>
+
+
+                <!-- =================================================
+                     REGISTER
+                ================================================== -->
+
+                <form
+                    id="registerForm"
+                    class="auth-form hidden"
+                >
+
+                    <div class="form-group">
+
+                        <label for="registerUsername">
+                            👤 Tên tài khoản
+                        </label>
+
+                        <input
+                            id="registerUsername"
+                            type="text"
+                            placeholder="Ví dụ: huy123"
+                            autocomplete="username"
+                            maxlength="20"
+                            required
+                        >
+
+                        <small>
+                            3–20 ký tự, chỉ dùng chữ, số và dấu _
+                        </small>
+
+                    </div>
+
+
+                    <div class="form-group">
+
+                        <label for="registerPassword">
+                            🔒 Mật khẩu
+                        </label>
+
+                        <input
+                            id="registerPassword"
+                            type="password"
+                            placeholder="Ít nhất 6 ký tự"
+                            autocomplete="new-password"
+                            minlength="6"
+                            required
+                        >
+
+                    </div>
+
+
+                    <div class="form-group">
+
+                        <label for="registerPassword2">
+                            🔒 Nhập lại mật khẩu
+                        </label>
+
+                        <input
+                            id="registerPassword2"
+                            type="password"
+                            placeholder="Nhập lại mật khẩu"
+                            autocomplete="new-password"
+                            minlength="6"
+                            required
+                        >
+
+                    </div>
+
+
+                    <button
+                        type="submit"
+                        class="auth-submit"
+                    >
+                        TẠO TÀI KHOẢN 🐣
+                    </button>
+
+                </form>
+
+
+                <!-- AUTH MESSAGE -->
+
+                <div
+                    id="authMessage"
+                    class="auth-message"
+                ></div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+
+<!-- =========================================================
+     GAME SCREEN
+========================================================= -->
+
+<section
+    id="gameScreen"
+    class="screen hidden"
+>
+
+    <!-- TOP BAR -->
+
+    <header class="game-topbar">
+
+        <div class="game-logo">
+            🐔 CHƯỞNG GÀ
+        </div>
+
+
+        <div class="game-stats">
+
+            <div class="stat-box">
+
+                <span class="stat-icon">
+                    ⭐
+                </span>
+
+                <span id="score">
+                    0
+                </span>
+
+            </div>
+
+
+            <div class="stat-box timer-box">
+
+                <span class="stat-icon">
+                    ⏱️
+                </span>
+
+                <span id="timer">
+                    60
+                </span>
+
+            </div>
+
+        </div>
+
+
+        <!-- ACCOUNT -->
+
+        <div class="account-area">
+
+            <span id="currentUsername">
+                Player
+            </span>
+
+
+            <button
+                id="leaderboardButton"
+                class="small-button"
+                type="button"
+            >
+                🏆 BXH
+            </button>
+
+
+            <button
+                id="adminButton"
+                class="small-button admin-button hidden"
+                type="button"
+            >
+                ⚙️ ADMIN
+            </button>
+
+
+            <button
+                id="logoutButton"
+                class="small-button logout-button"
+                type="button"
+            >
+                Thoát
+            </button>
+
+        </div>
+
+    </header>
+
+
+
+    <!-- =================================================
+         GAME AREA
+    ================================================== -->
+
+    <main
+        id="gameArea"
+        class="game-area"
+    >
+
+        <!-- SKY -->
+
+        <div class="game-sky">
+
+            <div class="sun">
+                ☀️
+            </div>
+
+            <div class="cloud cloud-a">
+                ☁️
+            </div>
+
+            <div class="cloud cloud-b">
+                ☁️
+            </div>
+
+            <div class="cloud cloud-c">
+                ☁️
+            </div>
+
+        </div>
+
+
+        <!-- MOUNTAINS -->
+
+        <div class="mountains">
+
+            <div class="mountain m1"></div>
+
+            <div class="mountain m2"></div>
+
+            <div class="mountain m3"></div>
+
+        </div>
+
+
+        <!-- GRASS -->
+
+        <div class="grass"></div>
+
+
+        <!-- START MESSAGE -->
+
+        <div
+            id="startMessage"
+            class="start-message"
+        >
+
+            <div class="start-chicken">
+                🐔
+            </div>
+
+
+            <h2>
+                SẴN SÀNG CHƯA?
+            </h2>
+
+
+            <p>
+                Chưởng gà để nhận câu hỏi!
+            </p>
+
+
+            <p>
+                Trả lời đúng để ghi điểm.
+            </p>
+
+
+            <button
+                id="startButton"
+                class="start-button"
+                type="button"
+            >
+                BẮT ĐẦU CHƠI
+            </button>
+
+        </div>
+
+    </main>
+
+
+
+    <!-- GAME INFO -->
+
+    <div class="game-bottom">
+
+        <span>
+            🐔 Chạm vào gà → trả lời câu hỏi
+        </span>
+
+        <span>
+            ⭐ Trả lời đúng = +1 điểm
+        </span>
+
+        <span>
+            ⏱️ Thời gian: 60 giây
+        </span>
+
+    </div>
+
+</section>
+
+
+
+<!-- =========================================================
+     RESULT SCREEN
+========================================================= -->
+
+<section
+    id="resultScreen"
+    class="screen hidden"
+>
+
+    <div class="result-card">
+
+        <div class="result-chicken">
+            🐔
+        </div>
+
+
+        <h1>
+            HẾT GIỜ!
+        </h1>
+
+
+        <p class="result-subtitle">
+            Trận đấu kết thúc!
+        </p>
+
+
+        <div class="result-score">
+
+            <span>
+                ĐIỂM CỦA BẠN
+            </span>
+
+            <strong id="finalScore">
+                0
+            </strong>
+
+        </div>
+
+
+        <div
+            id="scoreSaveMessage"
+            class="score-save-message"
+        ></div>
+
+
+        <div class="result-actions">
+
+            <button
+                id="playAgainButton"
+                class="primary-button"
+                type="button"
+            >
+                🔄 CHƠI LẠI
+            </button>
+
+
+            <button
+                id="resultLeaderboardButton"
+                class="secondary-button"
+                type="button"
+            >
+                🏆 XEM BẢNG XẾP HẠNG
+            </button>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+
+<!-- =========================================================
+     LEADERBOARD SCREEN
+========================================================= -->
+
+<section
+    id="leaderboardScreen"
+    class="screen hidden"
+>
+
+    <div class="panel-card leaderboard-card">
+
+        <div class="panel-header">
+
+            <div>
+
+                <span class="panel-icon">
+                    🏆
+                </span>
+
+                <h1>
+                    BẢNG XẾP HẠNG
+                </h1>
+
+                <p>
+                    Những cao thủ Chưởng Gà
+                </p>
+
+            </div>
+
+
+            <button
+                id="leaderboardBackButton"
+                class="close-button"
+                type="button"
+            >
+                ✕
+            </button>
+
+        </div>
+
+
+        <div class="leaderboard-table-wrapper">
+
+            <table class="leaderboard-table">
+
+                <thead>
+
+                    <tr>
+
+                        <th>
+                            #
+                        </th>
+
+                        <th>
+                            Người chơi
+                        </th>
+
+                        <th>
+                            Điểm cao nhất
+                        </th>
+
+                        <th>
+                            Số trận
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody id="leaderboardBody">
+
+                    <tr>
+
+                        <td colspan="4">
+                            Đang tải...
+                        </td>
+
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+
+<!-- =========================================================
+     ADMIN SCREEN
+========================================================= -->
+
+<section
+    id="adminScreen"
+    class="screen hidden"
+>
+
+    <div class="panel-card admin-card">
+
+        <div class="panel-header">
+
+            <div>
+
+                <span class="panel-icon">
+                    ⚙️
+                </span>
+
+                <h1>
+                    QUẢN TRỊ
+                </h1>
+
+                <p>
+                    Quản lý tài khoản người chơi
+                </p>
+
+            </div>
+
+
+            <button
+                id="adminBackButton"
+                class="close-button"
+                type="button"
+            >
+                ✕
+            </button>
+
+        </div>
+
+
+        <div
+            id="adminMessage"
+            class="admin-message"
+        ></div>
+
+
+        <div class="admin-table-wrapper">
+
+            <table class="admin-table">
+
+                <thead>
+
+                    <tr>
+
+                        <th>
+                            Username
+                        </th>
+
+                        <th>
+                            Quyền
+                        </th>
+
+                        <th>
+                            Trạng thái
+                        </th>
+
+                        <th>
+                            Điểm cao nhất
+                        </th>
+
+                        <th>
+                            Số trận
+                        </th>
+
+                        <th>
+                            Thao tác
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody id="adminBody">
+
+                    <tr>
+
+                        <td colspan="6">
+                            Đang tải...
+                        </td>
+
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+
+<!-- =========================================================
+     SCRIPT
+========================================================= -->
+
+<script src="script.js"></script>
+
+</body>
+</html>

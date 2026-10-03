@@ -1,2808 +1,1653 @@
-// ==========================================
-// CHƯỞNG GÀ - GAME JAVASCRIPT
-// BẢN: NHẠC NỀN + NHẠC HIT + GAMEPLAY KỊCH TÍNH
-// ==========================================
+/* =========================================================
+   CHƯỞNG GÀ - SCRIPT.JS
+   Supabase + Game + Leaderboard + Admin
+
+   AUDIO:
+   - music.mp3
+   - hit.mp3
+
+   GAME:
+   - 60 giây
+   - Gà tăng tốc theo thời gian
+   - Gà bám theo beat của nhạc
+   - Cuối game tăng tốc mạnh
+========================================================= */
 
 
-// ================================
-// LẤY ELEMENT
-// ================================
+/* =========================================================
+   1. SUPABASE CONFIG
+========================================================= */
 
-const gameScreen = document.getElementById("gameScreen");
-const resultScreen = document.getElementById("resultScreen");
-const wheelScreen = document.getElementById("wheelScreen");
+const SUPABASE_URL =
+    "https://qlrtgivtgvlnvkibqtej.supabase.co";
 
-const gameArea = document.getElementById("gameArea");
+const SUPABASE_PUBLISHABLE_KEY =
+    "sb_publishable_7isDs5a45y__a6zPgKJjMQ_boGU73Uu";
 
-const startMessage = document.getElementById("startMessage");
-const startButton = document.getElementById("startButton");
+let supabaseClient = null;
 
-const scoreElement = document.getElementById("score");
-const timerElement = document.getElementById("timer");
-const spinCountElement = document.getElementById("spinCount");
+if (
+    window.supabase &&
+    SUPABASE_URL !== "YOUR_SUPABASE_URL" &&
+    SUPABASE_PUBLISHABLE_KEY !== "YOUR_SUPABASE_PUBLISHABLE_KEY"
+) {
 
-const finalScoreElement = document.getElementById("finalScore");
-const finalSpinCountElement = document.getElementById("finalSpinCount");
+    supabaseClient =
+        window.supabase.createClient(
+            SUPABASE_URL,
+            SUPABASE_PUBLISHABLE_KEY
+        );
 
-const goWheelButton = document.getElementById("goWheelButton");
-
-const remainingSpinElement = document.getElementById("remainingSpin");
-
-const spinButton = document.getElementById("spinButton");
-const restartButton = document.getElementById("restartButton");
-
-const wheel = document.getElementById("wheel");
-
-const prizeResult = document.getElementById("prizeResult");
-const prizeText = document.getElementById("prizeText");
+}
 
 
-// ================================
-// GAME VARIABLES
-// ================================
+/* =========================================================
+   2. GAME CONFIG
+========================================================= */
 
-const GAME_DURATION = 15;
+const GAME_DURATION = 60;
 
-// BPM của nền nhạc.
-// 152 BPM -> 1 beat khoảng 395ms.
+
+/*
+   BPM của nhạc.
+
+   152 BPM
+   1 beat ≈ 394.7ms
+*/
 const MUSIC_BPM = 152;
-const BEAT_INTERVAL = 60 / MUSIC_BPM;
 
-// Beat đầu của bài nhạc.
-const FIRST_BEAT = 1.068;
+const BEAT_TIME =
+    60000 / MUSIC_BPM;
+
+
+/*
+   Tốc độ gà theo beat:
+
+   Đầu:
+   2 beat / gà
+
+   15s:
+   ~1.6 beat / gà
+
+   30s:
+   ~1.2 beat / gà
+
+   45s:
+   ~0.8 beat / gà
+
+   Cuối:
+   0.5 beat / gà
+*/
+
+
+/* Thời gian gà tồn tại */
+
+const CHICKEN_LIFETIME_START =
+    2200;
+
+const CHICKEN_LIFETIME_END =
+    650;
+
+
+/* =========================================================
+   3. DOM
+========================================================= */
+
+const authScreen =
+    document.getElementById("authScreen");
+
+const gameScreen =
+    document.getElementById("gameScreen");
+
+const resultScreen =
+    document.getElementById("resultScreen");
+
+const leaderboardScreen =
+    document.getElementById("leaderboardScreen");
+
+const adminScreen =
+    document.getElementById("adminScreen");
+
+
+/* AUTH */
+
+const loginTab =
+    document.getElementById("loginTab");
+
+const registerTab =
+    document.getElementById("registerTab");
+
+const loginForm =
+    document.getElementById("loginForm");
+
+const registerForm =
+    document.getElementById("registerForm");
+
+const authMessage =
+    document.getElementById("authMessage");
+
+
+const loginUsername =
+    document.getElementById("loginUsername");
+
+const loginPassword =
+    document.getElementById("loginPassword");
+
+
+const registerUsername =
+    document.getElementById("registerUsername");
+
+const registerPassword =
+    document.getElementById("registerPassword");
+
+const registerPassword2 =
+    document.getElementById("registerPassword2");
+
+
+/* GAME */
+
+const gameArea =
+    document.getElementById("gameArea");
+
+const startMessage =
+    document.getElementById("startMessage");
+
+const startButton =
+    document.getElementById("startButton");
+
+const scoreElement =
+    document.getElementById("score");
+
+const timerElement =
+    document.getElementById("timer");
+
+const finalScoreElement =
+    document.getElementById("finalScore");
+
+const playAgainButton =
+    document.getElementById("playAgainButton");
+
+const scoreSaveMessage =
+    document.getElementById("scoreSaveMessage");
+
+
+/* ACCOUNT */
+
+const currentUsername =
+    document.getElementById("currentUsername");
+
+const logoutButton =
+    document.getElementById("logoutButton");
+
+const leaderboardButton =
+    document.getElementById("leaderboardButton");
+
+const resultLeaderboardButton =
+    document.getElementById(
+        "resultLeaderboardButton"
+    );
+
+const adminButton =
+    document.getElementById("adminButton");
+
+
+/* LEADERBOARD */
+
+const leaderboardBody =
+    document.getElementById("leaderboardBody");
+
+const leaderboardBackButton =
+    document.getElementById(
+        "leaderboardBackButton"
+    );
+
+
+/* ADMIN */
+
+const adminBody =
+    document.getElementById("adminBody");
+
+const adminMessage =
+    document.getElementById("adminMessage");
+
+const adminBackButton =
+    document.getElementById("adminBackButton");
+
+
+/* =========================================================
+   4. GAME STATE
+========================================================= */
 
 let score = 0;
 
-let timeLeft = GAME_DURATION;
+let timeLeft =
+    GAME_DURATION;
 
 let gameRunning = false;
-let gameEnded = false;
+
+let gameTimer = null;
+
+
+/*
+   chickenTimer hiện tại là setTimeout
+   chứ không còn setInterval.
+*/
+let chickenTimer = null;
+
+
+let currentUser = null;
+
+let currentProfile = null;
+
 let questionActive = false;
 
-let timerInterval = null;
-let chickenSpawnTimeout = null;
-let questionAnswerTimeout = null;
-
-let currentSpins = 0;
-
-let wheelRotation = 0;
-
-// Số câu hỏi đã trả lời.
-let questionsAnswered = 0;
-
-// Ngân hàng câu hỏi.
-let questionPool = [];
-
-// Vị trí câu hỏi.
-let questionIndex = 0;
-
-// Đồng bộ nhạc.
-let musicSyncFrame = null;
-let lastBeatIndex = -1;
-let lastMusicTime = 0;
-
-// Trạng thái audio.
-let audioStarted = false;
-
-// Khóa vòng quay khi đang quay.
-let wheelSpinning = false;
+let gameEnded = false;
 
 
-// ================================
-// ÂM THANH
-// ================================
+/* =========================================================
+   5. AUDIO
+   CHỈ DÙNG 2 FILE
+========================================================= */
 
-// Code hỗ trợ cả:
-// music.mp3
-// music(1).mp3
-//
-// hit.mp3 phải nằm cùng thư mục với index.html.
+const bgMusic =
+    new Audio("music.mp3");
 
-const bgMusic = new Audio();
-const hitSound = new Audio("hit.mp3");
-const questionSound = new Audio("question.mp3");
+const hitSound =
+    new Audio("hit.mp3");
 
-bgMusic.preload = "auto";
+
 bgMusic.loop = true;
-bgMusic.volume = 0.30;
 
-hitSound.preload = "auto";
-hitSound.volume = 0.78;
+bgMusic.volume = 0.32;
 
-questionSound.preload = "auto";
-questionSound.volume = 0.85;
+hitSound.volume = 0.8;
 
-// Thử music.mp3 trước.
-// Nếu không có thì thử music(1).mp3.
-let musicSourceIndex = 0;
 
-const musicSources = [
-    "music.mp3",
-    "music(1).mp3"
+/* =========================================================
+   6. AUDIO HELPERS
+========================================================= */
+
+function playHitSound() {
+
+    try {
+
+        hitSound.currentTime = 0;
+
+        const promise =
+            hitSound.play();
+
+        if (promise !== undefined) {
+
+            promise.catch(() => {});
+
+        }
+
+    } catch (error) {
+
+        console.warn(
+            "Hit sound error:",
+            error
+        );
+
+    }
+
+}
+
+
+function startBackgroundMusic() {
+
+    try {
+
+        bgMusic.currentTime = 0;
+
+        const promise =
+            bgMusic.play();
+
+        if (promise !== undefined) {
+
+            promise.catch(() => {
+
+                console.log(
+                    "Không thể tự phát nhạc."
+                );
+
+            });
+
+        }
+
+    } catch (error) {
+
+        console.warn(
+            "Background music error:",
+            error
+        );
+
+    }
+
+}
+
+
+function stopBackgroundMusic() {
+
+    try {
+
+        bgMusic.pause();
+
+        bgMusic.currentTime = 0;
+
+    } catch (error) {
+
+        console.warn(
+            "Stop music error:",
+            error
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   7. QUESTIONS
+========================================================= */
+
+const questionBank = [
+
+    {
+        question:
+            "Thủ đô của Việt Nam là gì?",
+
+        answers: [
+            "TP. Hồ Chí Minh",
+            "Hà Nội",
+            "Đà Nẵng",
+            "Huế"
+        ],
+
+        correct: 1
+    },
+
+    {
+        question:
+            "1 + 1 bằng bao nhiêu?",
+
+        answers: [
+            "1",
+            "2",
+            "3",
+            "4"
+        ],
+
+        correct: 1
+    },
+
+    {
+        question:
+            "Con vật nào thường được gọi là 'chúa sơn lâm'?",
+
+        answers: [
+            "Voi",
+            "Hổ",
+            "Gà",
+            "Khỉ"
+        ],
+
+        correct: 1
+    },
+
+    {
+        question:
+            "Nước nào có hình chữ S?",
+
+        answers: [
+            "Việt Nam",
+            "Nhật Bản",
+            "Hàn Quốc",
+            "Thái Lan"
+        ],
+
+        correct: 0
+    },
+
+    {
+        question:
+            "Một tuần có bao nhiêu ngày?",
+
+        answers: [
+            "5",
+            "6",
+            "7",
+            "8"
+        ],
+
+        correct: 2
+    },
+
+    {
+        question:
+            "Hành tinh nào gần Mặt Trời nhất?",
+
+        answers: [
+            "Trái Đất",
+            "Sao Kim",
+            "Sao Thủy",
+            "Sao Hỏa"
+        ],
+
+        correct: 2
+    },
+
+    {
+        question:
+            "CPU là viết tắt của gì?",
+
+        answers: [
+            "Central Processing Unit",
+            "Computer Personal Unit",
+            "Central Program Utility",
+            "Control Processing User"
+        ],
+
+        correct: 0
+    },
+
+    {
+        question:
+            "HTML chủ yếu dùng để làm gì?",
+
+        answers: [
+            "Xử lý ảnh",
+            "Tạo cấu trúc trang web",
+            "Chơi game",
+            "Quản lý cơ sở dữ liệu"
+        ],
+
+        correct: 1
+    },
+
+    {
+        question:
+            "JavaScript thường được dùng để làm gì trên website?",
+
+        answers: [
+            "Tạo tương tác",
+            "Thay thế HTML",
+            "Tạo nguồn điện",
+            "Nén hình ảnh"
+        ],
+
+        correct: 0
+    },
+
+    {
+        question:
+            "Con gà có mấy chân?",
+
+        answers: [
+            "1",
+            "2",
+            "3",
+            "4"
+        ],
+
+        correct: 1
+    },
+
+    {
+        question:
+            "Mặt Trời mọc ở hướng nào?",
+
+        answers: [
+            "Đông",
+            "Tây",
+            "Nam",
+            "Bắc"
+        ],
+
+        correct: 0
+    },
+
+    {
+        question:
+            "RGB gồm những màu nào?",
+
+        answers: [
+            "Đỏ, xanh lá, xanh dương",
+            "Đỏ, vàng, trắng",
+            "Đen, trắng, xám",
+            "Cam, tím, hồng"
+        ],
+
+        correct: 0
+    },
+
+    {
+        question:
+            "Loài vật nào đẻ trứng?",
+
+        answers: [
+            "Gà",
+            "Chó",
+            "Mèo",
+            "Bò"
+        ],
+
+        correct: 0
+    }
+
 ];
 
-bgMusic.src = musicSources[musicSourceIndex];
+
+/* =========================================================
+   8. SHOW SCREEN
+========================================================= */
+
+function showScreen(screen) {
+
+    const screens = [
+        authScreen,
+        gameScreen,
+        resultScreen,
+        leaderboardScreen,
+        adminScreen
+    ];
 
 
-bgMusic.addEventListener(
-    "error",
-    function () {
+    screens.forEach(item => {
 
-        if (
-            musicSourceIndex <
-            musicSources.length - 1
-        ) {
+        if (!item) return;
 
-            musicSourceIndex++;
+        item.classList.add("hidden");
 
-            bgMusic.src =
-                musicSources[musicSourceIndex];
+        item.classList.remove("active");
 
-            bgMusic.load();
+    });
+
+
+    if (screen) {
+
+        screen.classList.remove("hidden");
+
+        screen.classList.add("active");
+
+    }
+
+}
+
+
+/* =========================================================
+   9. USERNAME
+========================================================= */
+
+function normalizeUsername(username) {
+
+    return String(username || "")
+        .trim()
+        .toLowerCase();
+
+}
+
+
+function validUsername(username) {
+
+    return /^[a-z0-9_]{3,20}$/.test(
+        username
+    );
+
+}
+
+
+function usernameToInternalEmail(username) {
+
+    const cleanUsername =
+        normalizeUsername(username);
+
+    return `${cleanUsername}@chuongga.local`;
+
+}
+
+
+/* =========================================================
+   10. AUTH MESSAGE
+========================================================= */
+
+function showAuthMessage(
+    message,
+    type = ""
+) {
+
+    if (!authMessage) return;
+
+    authMessage.textContent =
+        message;
+
+    authMessage.className =
+        "auth-message";
+
+
+    if (type) {
+
+        authMessage.classList.add(
+            type
+        );
+
+    }
+
+}
+
+
+function clearAuthMessage() {
+
+    if (!authMessage) return;
+
+    authMessage.textContent = "";
+
+    authMessage.className =
+        "auth-message";
+
+}
+
+
+/* =========================================================
+   11. AUTH TABS
+========================================================= */
+
+function showLogin() {
+
+    loginTab.classList.add(
+        "active"
+    );
+
+    registerTab.classList.remove(
+        "active"
+    );
+
+
+    loginForm.classList.remove(
+        "hidden"
+    );
+
+    registerForm.classList.add(
+        "hidden"
+    );
+
+
+    clearAuthMessage();
+
+}
+
+
+function showRegister() {
+
+    registerTab.classList.add(
+        "active"
+    );
+
+    loginTab.classList.remove(
+        "active"
+    );
+
+
+    registerForm.classList.remove(
+        "hidden"
+    );
+
+    loginForm.classList.add(
+        "hidden"
+    );
+
+
+    clearAuthMessage();
+
+}
+
+
+loginTab.addEventListener(
+    "click",
+    showLogin
+);
+
+
+registerTab.addEventListener(
+    "click",
+    showRegister
+);
+
+
+/* =========================================================
+   12. REGISTER
+========================================================= */
+
+registerForm.addEventListener(
+    "submit",
+    async function (event) {
+
+        event.preventDefault();
+
+
+        if (!supabaseClient) {
+
+            showAuthMessage(
+                "Chưa cấu hình Supabase.",
+                "error"
+            );
+
+            return;
+
+        }
+
+
+        const username =
+            normalizeUsername(
+                registerUsername.value
+            );
+
+        const password =
+            registerPassword.value;
+
+        const password2 =
+            registerPassword2.value;
+
+
+        if (!validUsername(username)) {
+
+            showAuthMessage(
+                "Tên tài khoản phải có 3–20 ký tự, chỉ gồm chữ, số và _.",
+                "error"
+            );
+
+            return;
+
+        }
+
+
+        if (password.length < 6) {
+
+            showAuthMessage(
+                "Mật khẩu phải có ít nhất 6 ký tự.",
+                "error"
+            );
+
+            return;
+
+        }
+
+
+        if (password !== password2) {
+
+            showAuthMessage(
+                "Hai mật khẩu không giống nhau.",
+                "error"
+            );
+
+            return;
+
+        }
+
+
+        showAuthMessage(
+            "Đang tạo tài khoản..."
+        );
+
+
+        try {
+
+            const {
+                data: existingProfile,
+                error: profileError
+            } =
+                await supabaseClient
+                    .from("profiles")
+                    .select("id")
+                    .eq(
+                        "username",
+                        username
+                    )
+                    .maybeSingle();
+
+
+            if (profileError) {
+
+                console.error(
+                    profileError
+                );
+
+            }
+
+
+            if (existingProfile) {
+
+                showAuthMessage(
+                    "Tên tài khoản này đã tồn tại.",
+                    "error"
+                );
+
+                return;
+
+            }
+
+
+            const internalEmail =
+                usernameToInternalEmail(
+                    username
+                );
+
+
+            const {
+                data,
+                error
+            } =
+                await supabaseClient.auth.signUp({
+
+                    email:
+                        internalEmail,
+
+                    password:
+                        password,
+
+                    options: {
+
+                        data: {
+                            username:
+                                username
+                        }
+
+                    }
+
+                });
+
+
+            if (error) {
+
+                console.error(error);
+
+                showAuthMessage(
+                    translateAuthError(
+                        error.message
+                    ),
+                    "error"
+                );
+
+                return;
+
+            }
+
+
+            if (!data.session) {
+
+                showAuthMessage(
+                    "Tạo tài khoản thành công. Hãy kiểm tra cấu hình Email Confirmation trong Supabase.",
+                    "success"
+                );
+
+                return;
+
+            }
+
+
+            showAuthMessage(
+                "Tạo tài khoản thành công!",
+                "success"
+            );
+
+
+            await loadCurrentUser();
+
+
+        } catch (error) {
+
+            console.error(error);
+
+            showAuthMessage(
+                "Không thể tạo tài khoản.",
+                "error"
+            );
+
         }
 
     }
 );
 
 
-// ================================
-// PLAY AUDIO AN TOÀN
-// ================================
+/* =========================================================
+   13. LOGIN
+========================================================= */
 
-function safePlay(audio) {
+loginForm.addEventListener(
+    "submit",
+    async function (event) {
 
-    const promise =
-        audio.play();
-
-    if (
-        promise &&
-        typeof promise.catch === "function"
-    ) {
-
-        promise.catch(
-            function () {
-
-                // Trình duyệt có thể chặn audio.
-                // Vì vậy không để lỗi làm hỏng game.
-
-            }
-        );
-
-    }
-
-}
+        event.preventDefault();
 
 
-// ================================
-// BẮT ĐẦU NHẠC
-// ================================
+        if (!supabaseClient) {
 
-function startBackgroundMusic() {
-
-    bgMusic.currentTime = 0;
-
-    bgMusic.volume = 0.30;
-
-    safePlay(bgMusic);
-
-    if (
-        musicSyncFrame === null
-    ) {
-
-        musicSyncFrame =
-            requestAnimationFrame(
-                syncMusicBeatEffects
+            showAuthMessage(
+                "Chưa cấu hình Supabase.",
+                "error"
             );
 
-    }
-
-    audioStarted = true;
-
-}
-
-
-// ================================
-// DỪNG NHẠC
-// ================================
-
-function stopBackgroundMusic() {
-
-    bgMusic.pause();
-
-    try {
-
-        bgMusic.currentTime = 0;
-
-    }
-
-    catch (error) {
-
-        // Không làm game lỗi.
-
-    }
-
-    stopMusicSync();
-
-    audioStarted = false;
-
-}
-
-
-// ================================
-// NHẠC HIT
-// ================================
-
-function playHitSound() {
-    
-
-    try {
-
-        hitSound.currentTime = 0;
-
-    }
-
-    catch (error) {
-
-        // Bỏ qua lỗi seek.
-
-    }
-
-    safePlay(hitSound);
-
-}
-
-
-// ================================
-// HẠ NHẠC KHI HIỆN CÂU HỎI
-// ================================
-
-function duckMusic() {
-
-    if (
-        !bgMusic.paused
-    ) {
-
-        bgMusic.volume = 0.11;
-
-    }
-
-}
-
-
-// ================================
-// KHÔI PHỤC VOLUME
-// ================================
-
-function restoreMusicVolume() {
-
-    if (
-        bgMusic.paused
-    ) {
-
-        return;
-
-    }
-
-
-    // Nếu đang hiện câu hỏi.
-    if (
-        questionActive
-    ) {
-
-        bgMusic.volume = 0.11;
-
-    }
-
-    // 3 giây cuối.
-    else if (
-        timeLeft <= 3
-    ) {
-
-        bgMusic.volume = 0.42;
-
-    }
-
-    // 6 giây cuối.
-    else if (
-        timeLeft <= 6
-    ) {
-
-        bgMusic.volume = 0.36;
-
-    }
-
-    // Bình thường.
-    else {
-
-        bgMusic.volume = 0.30;
-
-    }
-
-}
-
-
-// ================================
-// ĐỒNG BỘ HIỆU ỨNG THEO BEAT
-// ================================
-
-function syncMusicBeatEffects() {
-
-    if (
-        !bgMusic.paused &&
-        !bgMusic.ended &&
-        gameRunning &&
-        !questionActive
-    ) {
-
-        const currentTime =
-            bgMusic.currentTime;
-
-
-        // Nếu nhạc vừa loop về đầu.
-        if (
-            currentTime <
-            lastMusicTime - 0.5
-        ) {
-
-            lastBeatIndex = -1;
+            return;
 
         }
 
 
-        lastMusicTime =
-            currentTime;
+        const username =
+            normalizeUsername(
+                loginUsername.value
+            );
+
+        const password =
+            loginPassword.value;
 
 
-        if (
-            currentTime >=
-            FIRST_BEAT
-        ) {
+        if (!validUsername(username)) {
 
-            const beatIndex =
-                Math.floor(
-                    (
-                        currentTime -
-                        FIRST_BEAT
-                    ) /
-                    BEAT_INTERVAL
+            showAuthMessage(
+                "Tên tài khoản không hợp lệ.",
+                "error"
+            );
+
+            return;
+
+        }
+
+
+        if (!password) {
+
+            showAuthMessage(
+                "Vui lòng nhập mật khẩu.",
+                "error"
+            );
+
+            return;
+
+        }
+
+
+        showAuthMessage(
+            "Đang đăng nhập..."
+        );
+
+
+        try {
+
+            const internalEmail =
+                usernameToInternalEmail(
+                    username
                 );
 
 
-            if (
-                beatIndex !==
-                lastBeatIndex
-            ) {
+            const {
+                data,
+                error
+            } =
+                await supabaseClient.auth.signInWithPassword({
 
-                lastBeatIndex =
-                    beatIndex;
+                    email:
+                        internalEmail,
 
-                triggerMusicBeat();
+                    password:
+                        password
+
+                });
+
+
+            if (error) {
+
+                console.error(error);
+
+                showAuthMessage(
+                    "Tên tài khoản hoặc mật khẩu không đúng.",
+                    "error"
+                );
+
+                return;
 
             }
+
+
+            currentUser =
+                data.user;
+
+
+            await loadCurrentUser();
+
+
+        } catch (error) {
+
+            console.error(error);
+
+            showAuthMessage(
+                "Đăng nhập thất bại.",
+                "error"
+            );
 
         }
 
     }
+);
 
 
-    musicSyncFrame =
-        requestAnimationFrame(
-            syncMusicBeatEffects
-        );
+/* =========================================================
+   14. AUTH ERROR
+========================================================= */
 
-}
+function translateAuthError(message) {
 
-
-// ================================
-// HIỆU ỨNG MỖI BEAT
-// ================================
-
-function triggerMusicBeat() {
-
-    if (
-        !gameRunning ||
-        questionActive ||
-        gameEnded
-    ) {
-
-        return;
-
-    }
-
-
-    gameArea.classList.remove(
-        "music-beat",
-        "music-beat-danger"
-    );
-
-
-    // Ép browser chạy lại animation.
-    void gameArea.offsetWidth;
+    const text =
+        String(message || "")
+            .toLowerCase();
 
 
     if (
-        timeLeft <= 6
-    ) {
-
-        gameArea.classList.add(
-            "music-beat-danger"
-        );
-
-    }
-
-    else {
-
-        gameArea.classList.add(
-            "music-beat"
-        );
-
-    }
-
-
-    // 3 giây cuối rung màn hình.
-    if (
-        timeLeft <= 3
-    ) {
-
-        gameScreen.classList.remove(
-            "critical-beat"
-        );
-
-        void gameScreen.offsetWidth;
-
-        gameScreen.classList.add(
-            "critical-beat"
-        );
-
-    }
-
-}
-
-
-// ================================
-// DỪNG ĐỒNG BỘ NHẠC
-// ================================
-
-function stopMusicSync() {
-
-    if (
-        musicSyncFrame !== null
-    ) {
-
-        cancelAnimationFrame(
-            musicSyncFrame
-        );
-
-        musicSyncFrame = null;
-
-    }
-
-
-    lastBeatIndex = -1;
-
-    lastMusicTime = 0;
-
-}
-
-
-// ================================
-// THÊM CSS HIỆU ỨNG
-// ================================
-
-function addDramaticStyles() {
-
-    if (
-        document.getElementById(
-            "dramaticGameStyles"
+        text.includes(
+            "already registered"
         )
     ) {
 
+        return "Tài khoản này đã tồn tại.";
+
+    }
+
+
+    if (
+        text.includes("password")
+    ) {
+
+        return "Mật khẩu không hợp lệ.";
+
+    }
+
+
+    if (
+        text.includes("invalid")
+    ) {
+
+        return "Thông tin tài khoản không hợp lệ.";
+
+    }
+
+
+    return "Có lỗi xảy ra. Vui lòng thử lại.";
+
+}
+
+
+/* =========================================================
+   15. LOAD CURRENT USER
+========================================================= */
+
+async function loadCurrentUser() {
+
+    if (!supabaseClient) return;
+
+
+    const {
+        data,
+        error
+    } =
+        await supabaseClient.auth.getUser();
+
+
+    if (
+        error ||
+        !data.user
+    ) {
+
+        currentUser = null;
+
+        showScreen(
+            authScreen
+        );
+
         return;
 
     }
 
 
-    const style =
-        document.createElement("style");
+    currentUser =
+        data.user;
 
 
-    style.id =
-        "dramaticGameStyles";
+    await loadProfile();
 
 
-    style.textContent = `
+    if (!currentProfile) {
 
+        await createMissingProfile();
 
-        /* =====================================
-           NHỊP NHẠC BÌNH THƯỜNG
-        ===================================== */
+    }
 
-        .music-beat {
 
-            animation:
-                musicBeatPulse
-                0.18s
-                ease-out;
+    if (!currentProfile) {
 
-        }
+        showAuthMessage(
+            "Không tìm thấy thông tin tài khoản.",
+            "error"
+        );
 
+        showScreen(
+            authScreen
+        );
 
-        @keyframes musicBeatPulse {
+        return;
 
-            0% {
+    }
 
-                filter:
-                    brightness(1);
 
-            }
+    if (
+        currentProfile.is_active === false
+    ) {
 
-            45% {
+        await supabaseClient.auth.signOut();
 
-                filter:
-                    brightness(1.10);
+        showAuthMessage(
+            "Tài khoản của bạn đã bị khóa.",
+            "error"
+        );
 
-            }
+        showScreen(
+            authScreen
+        );
 
-            100% {
+        return;
 
-                filter:
-                    brightness(1);
+    }
 
-            }
 
-        }
+    updateAccountUI();
 
 
+    showScreen(
+        gameScreen
+    );
 
-        /* =====================================
-           NHỊP NHẠC MẠNH
-        ===================================== */
+}
 
-        .music-beat-danger {
 
-            animation:
-                dangerBeatPulse
-                0.20s
-                ease-out;
+/* =========================================================
+   16. LOAD PROFILE
+========================================================= */
 
-        }
+async function loadProfile() {
 
+    currentProfile = null;
 
-        @keyframes dangerBeatPulse {
 
-            0% {
+    const {
+        data,
+        error
+    } =
+        await supabaseClient
+            .from("profiles")
+            .select(
+                "id, username, role, is_active, best_score, total_games"
+            )
+            .eq(
+                "id",
+                currentUser.id
+            )
+            .maybeSingle();
 
-                transform:
-                    scale(1);
 
-                filter:
-                    brightness(1);
+    if (error) {
 
-            }
+        console.error(
+            "Profile error:",
+            error
+        );
 
-            45% {
+        return;
 
-                transform:
-                    scale(1.008);
+    }
 
-                filter:
-                    brightness(1.16);
 
-            }
+    currentProfile =
+        data;
 
-            100% {
+}
 
-                transform:
-                    scale(1);
 
-                filter:
-                    brightness(1);
+/* =========================================================
+   17. CREATE MISSING PROFILE
+========================================================= */
 
-            }
+async function createMissingProfile() {
 
-        }
+    const username =
+        normalizeUsername(
 
+            currentUser.user_metadata?.username
+            ||
+            currentUser.email?.split("@")[0]
+            ||
+            "player"
 
+        );
 
-        /* =====================================
-           RUNG MÀN HÌNH
-        ===================================== */
 
-        .critical-beat {
+    const {
+        data,
+        error
+    } =
+        await supabaseClient
+            .from("profiles")
+            .insert({
 
-            animation:
-                criticalScreenShake
-                0.16s
-                ease-out;
+                id:
+                    currentUser.id,
 
-        }
+                username:
+                    username,
 
+                role:
+                    "player",
 
-        @keyframes criticalScreenShake {
+                is_active:
+                    true,
 
-            0% {
-
-                transform:
-                    translateX(0);
-
-            }
-
-            25% {
-
-                transform:
-                    translateX(-3px);
-
-            }
-
-            50% {
-
-                transform:
-                    translateX(3px);
-
-            }
-
-            75% {
-
-                transform:
-                    translateX(-2px);
-
-            }
-
-            100% {
-
-                transform:
-                    translateX(0);
-
-            }
-
-        }
-
-
-
-        /* =====================================
-           TIMER CẢNH BÁO
-        ===================================== */
-
-        .timer-warning {
-
-            animation:
-                timerWarning
-                0.8s
-                ease-in-out
-                infinite;
-
-        }
-
-
-        @keyframes timerWarning {
-
-            0%,
-            100% {
-
-                transform:
-                    scale(1);
-
-            }
-
-            50% {
-
-                transform:
-                    scale(1.10);
-
-            }
-
-        }
-
-
-
-        .timer-critical {
-
-            animation:
-                timerCritical
-                0.38s
-                ease-in-out
-                infinite;
-
-        }
-
-
-        @keyframes timerCritical {
-
-            0%,
-            100% {
-
-                transform:
-                    scale(1);
-
-                filter:
-                    brightness(1);
-
-            }
-
-            50% {
-
-                transform:
-                    scale(1.22);
-
-                filter:
-                    brightness(1.25);
-
-            }
-
-        }
-
-
-
-        /* =====================================
-           KHUNG NGUY HIỂM
-        ===================================== */
-
-        body.game-danger #gameArea {
-
-            box-shadow:
-                inset
-                0 0 0 3px
-                rgba(
-                    255,
-                    100,
+                best_score:
                     0,
-                    0.22
-                );
 
-        }
-
-
-
-        body.game-critical #gameArea {
-
-            box-shadow:
-                inset
-                0 0 0 4px
-                rgba(
-                    255,
-                    0,
-                    0,
-                    0.40
-                ),
-                inset
-                0 0 50px
-                rgba(
-                    255,
-                    0,
-                    0,
-                    0.18
-                );
-
-        }
-
-
-
-        /* =====================================
-           FLASH KHI HIT
-        ===================================== */
-
-        .hit-flash {
-
-            position:
-                absolute;
-
-            inset:
-                0;
-
-            z-index:
-                90;
-
-            pointer-events:
-                none;
-
-            background:
-                radial-gradient(
-                    circle at
-                    var(--hit-x, 50%)
-                    var(--hit-y, 50%),
-
-                    rgba(
-                        255,
-                        255,
-                        255,
-                        0.95
-                    )
-                    0%,
-
-                    rgba(
-                        255,
-                        95,
-                        25,
-                        0.46
-                    )
-                    12%,
-
-                    rgba(
-                        255,
-                        0,
-                        0,
-                        0
-                    )
-                    45%
-                );
-
-            animation:
-                hitFlash
-                0.30s
-                ease-out
-                forwards;
-
-        }
-
-
-        @keyframes hitFlash {
-
-            0% {
-
-                opacity:
-                    0.95;
-
-            }
-
-            100% {
-
-                opacity:
-                    0;
-
-            }
-
-        }
-
-
-
-        /* =====================================
-           VÒNG SÓNG HIT
-        ===================================== */
-
-        .hit-ripple {
-
-            position:
-                absolute;
-
-            z-index:
-                95;
-
-            width:
-                24px;
-
-            height:
-                24px;
-
-            border:
-                4px
-                solid
-                rgba(
-                    255,
-                    255,
-                    255,
-                    0.95
-                );
-
-            border-radius:
-                50%;
-
-            pointer-events:
-                none;
-
-            transform:
-                translate(
-                    -50%,
-                    -50%
-                );
-
-            animation:
-                hitRipple
-                0.48s
-                ease-out
-                forwards;
-
-        }
-
-
-        @keyframes hitRipple {
-
-            0% {
-
-                opacity:
-                    1;
-
-                width:
-                    24px;
-
-                height:
-                    24px;
-
-                border-width:
-                    4px;
-
-            }
-
-            100% {
-
-                opacity:
-                    0;
-
-                width:
-                    160px;
-
-                height:
-                    160px;
-
-                border-width:
-                    1px;
-
-            }
-
-        }
-
-
-
-        /* =====================================
-           BÀN TAY CHƯỞNG
-        ===================================== */
-
-        .hand.dramatic-hand {
-
-            position:
-                absolute;
-
-            z-index:
-                100;
-
-            pointer-events:
-                none;
-
-            font-size:
-                78px;
-
-            filter:
-                drop-shadow(
+                total_games:
                     0
-                    6px
-                    10px
-                    rgba(
-                        0,
-                        0,
-                        0,
-                        0.25
-                    )
-                );
 
-            animation:
-                dramaticHand
-                0.48s
-                ease-out
-                forwards;
+            })
+            .select()
+            .single();
 
-        }
 
+    if (error) {
 
-        @keyframes dramaticHand {
-
-            0% {
-
-                opacity:
-                    0;
-
-                transform:
-                    translate(
-                        -50%,
-                        -50%
-                    )
-                    scale(0.20)
-                    rotate(-30deg);
-
-            }
-
-            25% {
-
-                opacity:
-                    1;
-
-                transform:
-                    translate(
-                        -50%,
-                        -50%
-                    )
-                    scale(1.25)
-                    rotate(12deg);
-
-            }
-
-            52% {
-
-                opacity:
-                    1;
-
-                transform:
-                    translate(
-                        -50%,
-                        -50%
-                    )
-                    scale(1)
-                    rotate(0deg);
-
-            }
-
-            100% {
-
-                opacity:
-                    0;
-
-                transform:
-                    translate(
-                        -50%,
-                        -72%
-                    )
-                    scale(0.72)
-                    rotate(8deg);
-
-            }
-
-        }
-
-
-
-        /* =====================================
-           +1 ĐIỂM
-        ===================================== */
-
-        .score-popup.dramatic-score {
-
-            position:
-                absolute;
-
-            z-index:
-                120;
-
-            pointer-events:
-                none;
-
-            color:
-                #ff5722;
-
-            font-size:
-                38px;
-
-            font-weight:
-                900;
-
-            text-shadow:
-                0
-                3px
-                0
-                rgba(
-                    0,
-                    0,
-                    0,
-                    0.22
-                ),
-                0
-                0
-                16px
-                rgba(
-                    255,
-                    220,
-                    80,
-                    0.92
-                );
-
-            transform:
-                translate(
-                    -50%,
-                    -50%
-                );
-
-            animation:
-                scoreBoom
-                0.68s
-                ease-out
-                forwards;
-
-        }
-
-
-        @keyframes scoreBoom {
-
-            0% {
-
-                opacity:
-                    0;
-
-                transform:
-                    translate(
-                        -50%,
-                        -50%
-                    )
-                    scale(0.25)
-                    rotate(-10deg);
-
-            }
-
-            25% {
-
-                opacity:
-                    1;
-
-                transform:
-                    translate(
-                        -50%,
-                        -50%
-                    )
-                    scale(1.35)
-                    rotate(5deg);
-
-            }
-
-            100% {
-
-                opacity:
-                    0;
-
-                transform:
-                    translate(
-                        -50%,
-                        -95%
-                    )
-                    scale(1)
-                    rotate(0deg);
-
-            }
-
-        }
-
-
-
-        /* =====================================
-           CHỮ HIT
-        ===================================== */
-
-        .hit-label {
-
-            position:
-                absolute;
-
-            z-index:
-                121;
-
-            pointer-events:
-                none;
-
-            font-size:
-                24px;
-
-            font-weight:
-                1000;
-
-            color:
-                white;
-
-            text-shadow:
-                0
-                2px
-                0
-                rgba(
-                    0,
-                    0,
-                    0,
-                    0.35
-                ),
-                0
-                0
-                12px
-                rgba(
-                    255,
-                    80,
-                    0,
-                    0.8
-                );
-
-            transform:
-                translate(
-                    -50%,
-                    -50%
-                );
-
-            animation:
-                hitLabel
-                0.55s
-                ease-out
-                forwards;
-
-        }
-
-
-        @keyframes hitLabel {
-
-            0% {
-
-                opacity:
-                    0;
-
-                transform:
-                    translate(
-                        -50%,
-                        -50%
-                    )
-                    scale(0.4);
-
-            }
-
-            22% {
-
-                opacity:
-                    1;
-
-                transform:
-                    translate(
-                        -50%,
-                        -50%
-                    )
-                    scale(1.15);
-
-            }
-
-            100% {
-
-                opacity:
-                    0;
-
-                transform:
-                    translate(
-                        -50%,
-                        -90%
-                    )
-                    scale(0.85);
-
-            }
-
-        }
-
-
-
-        /* =====================================
-           QUESTION MODAL
-        ===================================== */
-
-        #questionModal {
-
-            position:
-                fixed;
-
-            inset:
-                0;
-
-            z-index:
-                9999;
-
-            display:
-                flex;
-
-            align-items:
-                center;
-
-            justify-content:
-                center;
-
-            background:
-                rgba(
-                    0,
-                    0,
-                    0,
-                    0.68
-                );
-
-            padding:
-                20px;
-
-            backdrop-filter:
-                blur(3px);
-
-        }
-
-
-
-        .question-box {
-
-            width:
-                min(
-                    560px,
-                    95vw
-                );
-
-            background:
-                white;
-
-            border-radius:
-                24px;
-
-            padding:
-                25px;
-
-            box-shadow:
-                0
-                20px
-                60px
-                rgba(
-                    0,
-                    0,
-                    0,
-                    0.42
-                );
-
-            animation:
-                questionAppear
-                0.25s
-                ease;
-
-        }
-
-
-        @keyframes questionAppear {
-
-            from {
-
-                transform:
-                    scale(0.72);
-
-                opacity:
-                    0;
-
-            }
-
-            to {
-
-                transform:
-                    scale(1);
-
-                opacity:
-                    1;
-
-            }
-
-        }
-
-
-
-        .question-header {
-
-            display:
-                flex;
-
-            justify-content:
-                space-between;
-
-            align-items:
-                center;
-
-            font-size:
-                22px;
-
-            font-weight:
-                900;
-
-            margin-bottom:
-                20px;
-
-        }
-
-
-
-        .question-text {
-
-            font-size:
-                23px;
-
-            font-weight:
-                900;
-
-            text-align:
-                center;
-
-            line-height:
-                1.35;
-
-            margin:
-                20px 0 25px;
-
-        }
-
-
-
-        .answer-list {
-
-            display:
-                grid;
-
-            gap:
-                12px;
-
-        }
-
-
-
-        .answer-button {
-
-            border:
-                none;
-
-            padding:
-                15px;
-
-            border-radius:
-                14px;
-
-            background:
-                #f1f1f1;
-
-            font-size:
-                17px;
-
-            font-weight:
-                800;
-
-            cursor:
-                pointer;
-
-            text-align:
-                left;
-
-            transition:
-                transform
-                0.15s,
-                background
-                0.15s;
-
-        }
-
-
-
-        .answer-button:hover:not(:disabled) {
-
-            transform:
-                translateY(-2px);
-
-            background:
-                #e4e4e4;
-
-        }
-
-
-
-        .answer-button:disabled {
-
-            cursor:
-                default;
-
-        }
-
-
-
-        .answer-button.correct {
-
-            background:
-                #54c878;
-
-            color:
-                white;
-
-        }
-
-
-
-        .answer-button.wrong {
-
-            background:
-                #ed5c5c;
-
-            color:
-                white;
-
-        }
-
-
-
-        .question-message {
-
-            text-align:
-                center;
-
-            font-size:
-                21px;
-
-            font-weight:
-                900;
-
-            min-height:
-                30px;
-
-            margin-top:
-                18px;
-
-        }
-
-
-
-        .question-progress {
-
-            margin-top:
-                18px;
-
-            height:
-                7px;
-
-            border-radius:
-                99px;
-
-            background:
-                #eeeeee;
-
-            overflow:
-                hidden;
-
-        }
-
-
-
-        .question-progress span {
-
-            display:
-                block;
-
-            width:
-                100%;
-
-            height:
-                100%;
-
-            transform-origin:
-                left center;
-
-            background:
-                linear-gradient(
-                    90deg,
-                    #ff6d00,
-                    #ff9800
-                );
-
-        }
-
-
-
-        /* =====================================
-           CHỮ CẢNH BÁO CUỐI GAME
-        ===================================== */
-
-        .last-seconds-text {
-
-            position:
-                absolute;
-
-            left:
-                50%;
-
-            top:
-                17%;
-
-            z-index:
-                70;
-
-            transform:
-                translateX(-50%);
-
-            pointer-events:
-                none;
-
-            color:
-                rgba(
-                    255,
-                    255,
-                    255,
-                    0.96
-                );
-
-            font-size:
-                clamp(
-                    20px,
-                    3vw,
-                    34px
-                );
-
-            font-weight:
-                1000;
-
-            text-shadow:
-                0
-                3px
-                0
-                rgba(
-                    0,
-                    0,
-                    0,
-                    0.24
-                ),
-                0
-                0
-                20px
-                rgba(
-                    255,
-                    70,
-                    0,
-                    0.85
-                );
-
-            animation:
-                dangerText
-                0.55s
-                ease-in-out
-                infinite
-                alternate;
-
-        }
-
-
-
-        @keyframes dangerText {
-
-            from {
-
-                opacity:
-                    0.72;
-
-                transform:
-                    translateX(-50%)
-                    scale(0.96);
-
-            }
-
-            to {
-
-                opacity:
-                    1;
-
-                transform:
-                    translateX(-50%)
-                    scale(1.04);
-
-            }
-
-        }
-
-    `;
-
-
-    document.head.appendChild(style);
-
-}
-
-
-addDramaticStyles();
-
-
-// ================================
-// NGÂN HÀNG CÂU HỎI
-// ================================
-
-const questions = [
-
-    {
-        question:
-            "CLB Taekwondo OTC chính thức được thành lập vào ngày, tháng, năm nào?",
-
-        answers:
-            [
-                "19/03/2012",
-                "19/03/2015",
-                "19/03/2018",
-                "19/03/2020"
-            ],
-
-        correct:
-            1
-    },
-
-
-    {
-        question:
-            "Tên viết tắt tiếng Anh của Trường Đại học Mở TP.HCM là gì?",
-
-        answers:
-            [
-                "OU",
-                "OUM",
-                "HCMCOU",
-                "UHM"
-            ],
-
-        correct:
-            2
-    },
-
-
-    {
-        question:
-            'Tên viết tắt "OTC" của câu lạc bộ có ý nghĩa chính thức là gì?',
-
-        answers:
-            [
-                "Open Taekwondo Club",
-                "Only Taekwondo Connection",
-                "One Team Connection",
-                "Olympic Taekwondo Club"
-            ],
-
-        correct:
-            2
-    },
-
-
-    {
-        question:
-            "Trường Đại học Mở TP.HCM thuộc loại hình trường nào?",
-
-        answers:
-            [
-                "Công lập",
-                "Dân lập",
-                "Tư thục",
-                "Quốc tế"
-            ],
-
-        correct:
-            0
-    },
-
-
-    {
-        question:
-            "Giải đấu thể thao truyền thống lớn nhất dành cho sinh viên toàn trường tên là gì?",
-
-        answers:
-            [
-                "Hội thao OU",
-                "Olympic OU",
-                "OU Champions League",
-                "Giải bóng đá sinh viên Mở"
-            ],
-
-        correct:
-            0
-    },
-
-
-    {
-        question:
-            "Đâu là 4 giá trị cốt lõi trong bộ nhận diện thương hiệu của CLB OTC?",
-
-        answers:
-            [
-                "Honor – Strength – Mindset – Unity",
-                "Honor – Courtesy – Mindset – One Unity",
-                "Respect – Discipline – Mindset – Connection",
-                "Courage – Courtesy – Wisdom – One Unity"
-            ],
-
-        correct:
-            1
-    },
-
-
-    {
-        question:
-            "Lịch tập định kỳ của CLB OTC diễn ra vào những ngày nào?",
-
-        answers:
-            [
-                "Thứ 3, 5, 7",
-                "Thứ 2, 4, 6",
-                "Thứ Bảy, Chủ Nhật",
-                "Mỗi ngày trong tuần"
-            ],
-
-        correct:
-            1
-    },
-
-
-    {
-        question:
-            "Đối tượng nào có thể đăng ký tham gia CLB Taekwondo OTC?",
-
-        answers:
-            [
-                "Dành cho người đã từng học võ Taekwondo",
-                "Dành riêng cho tân sinh viên của trường OU",
-                "Dành cho nam sinh viên có thể lực tốt",
-                "Tất cả các bạn yêu thích võ thuật và các bạn chưa từng học võ"
-            ],
-
-        correct:
-            3
-    },
-
-
-    {
-        question:
-            "Ưu đãi dành cho thành viên mới tham gia OTC là gì?",
-
-        answers:
-            [
-                "Tặng võ phục miễn phí",
-                "Miễn phí tháng đầu tiên",
-                "Giảm 50% tiền thi đai",
-                "Giảm 50% tiền võ phục"
-            ],
-
-        correct:
-            1
-    },
-
-
-    {
-        question:
-            "Đâu KHÔNG phải là giá trị cốt lõi của CLB OTC?",
-
-        answers:
-            [
-                "Honor",
-                "Courtesy",
-                "Mindset",
-                "Money"
-            ],
-
-        correct:
-            3
-    },
-
-
-    {
-        question:
-            "Địa chỉ sân tập chính thức của CLB OTC ở đâu?",
-
-        answers:
-            [
-                "97 Võ Văn Tần, Q.3",
-                "371 Nguyễn Kiệm, Gò Vấp",
-                "35 Hồ Hảo Hớn, Q.1",
-                "02 Nguyễn Bỉnh Khiêm, Q.1"
-            ],
-
-        correct:
-            0
-    },
-
-
-    {
-        question:
-            "Khung giờ tập luyện chính thức của CLB OTC là khi nào?",
-
-        answers:
-            [
-                "15h00 - 17h00",
-                "17h00 - 19h00",
-                "18h00 - 20h00",
-                "19h30 - 21h30"
-            ],
-
-        correct:
-            2
-    },
-
-
-    {
-        question:
-            "Ngoài võ thuật, câu lạc bộ OTC chú trọng phát triển điều gì nhất cho võ sinh?",
-
-        answers:
-            [
-                "Khả năng ca hát và nghệ thuật",
-                "Sức khỏe, tính kỷ luật và kỹ năng mềm",
-                "Kỹ năng lập trình máy tính",
-                "Cách kinh doanh và khởi nghiệp"
-            ],
-
-        correct:
-            1
-    }
-
-];
-
-
-// ================================
-// XÁO TRỘN MẢNG
-// ================================
-
-function shuffleArray(array) {
-
-    const result =
-        [...array];
-
-
-    for (
-        let i = result.length - 1;
-        i > 0;
-        i--
-    ) {
-
-        const j =
-            Math.floor(
-                Math.random() *
-                (i + 1)
-            );
-
-
-        [
-            result[i],
-            result[j]
-        ] =
-        [
-            result[j],
-            result[i]
-        ];
-
-    }
-
-
-    return result;
-
-}
-
-
-// ================================
-// RESET QUESTION POOL
-// ================================
-
-function resetQuestionPool() {
-
-    questionPool =
-        shuffleArray(
-            questions
+        console.error(
+            "Create profile error:",
+            error
         );
-
-    questionIndex = 0;
-
-}
-
-
-// ================================
-// LẤY CÂU HỎI TIẾP THEO
-// ================================
-
-function getNextQuestion() {
-
-    if (
-        questionPool.length === 0 ||
-        questionIndex >= questionPool.length
-    ) {
-
-        resetQuestionPool();
-
-    }
-
-
-    const question =
-        questionPool[
-            questionIndex
-        ];
-
-
-    questionIndex++;
-
-    return question;
-
-}
-
-
-// ================================
-// TẠO POPUP CÂU HỎI
-// ================================
-
-function createQuestionModal() {
-
-    if (
-        document.getElementById(
-            "questionModal"
-        )
-    ) {
 
         return;
 
     }
 
 
-    const modal =
-        document.createElement("div");
-
-
-    modal.id =
-        "questionModal";
-
-
-    modal.innerHTML = `
-
-        <div class="question-box">
-
-            <div class="question-header">
-
-                <span>
-                    ❓ CÂU HỎI
-                </span>
-
-                <span id="questionNumber">
-                </span>
-
-            </div>
-
-
-            <div
-                id="questionText"
-                class="question-text">
-            </div>
-
-
-            <div
-                id="answerList"
-                class="answer-list">
-            </div>
-
-
-            <div
-                id="questionMessage"
-                class="question-message">
-            </div>
-
-
-            <div
-                class="question-progress">
-
-                <span
-                    id="questionProgressBar">
-                </span>
-
-            </div>
-
-        </div>
-
-    `;
-
-
-    document.body.appendChild(
-        modal
-    );
+    currentProfile =
+        data;
 
 }
 
 
-// ================================
-// HIỆN CÂU HỎI
-// ================================
+/* =========================================================
+   18. ACCOUNT UI
+========================================================= */
 
-function showQuestion() {
+function updateAccountUI() {
+
+    if (!currentProfile) return;
+
+
+    currentUsername.textContent =
+        currentProfile.username;
+
 
     if (
-        gameEnded ||
-        questionActive ||
-        timeLeft <= 0
+        currentProfile.role === "admin"
     ) {
 
-        return;
-
-    }
-
-
-    questionActive = true;
-
-    gameRunning = false;
-
-
-    clearTimeout(
-        chickenSpawnTimeout
-    );
-
-
-    // Hạ âm lượng nhạc.
-    duckMusic();
-
-
-    createQuestionModal();
-
-
-    const modal =
-        document.getElementById(
-            "questionModal"
+        adminButton.classList.remove(
+            "hidden"
         );
 
+    } else {
 
-    const questionText =
-        document.getElementById(
-            "questionText"
-        );
-
-
-    const answerList =
-        document.getElementById(
-            "answerList"
-        );
-
-
-    const questionNumber =
-        document.getElementById(
-            "questionNumber"
-        );
-
-
-    const questionMessage =
-        document.getElementById(
-            "questionMessage"
-        );
-
-
-    const progressBar =
-        document.getElementById(
-            "questionProgressBar"
-        );
-
-
-    const question =
-        getNextQuestion();
-
-
-    questionNumber.textContent =
-        `Câu ${questionsAnswered + 1}`;
-
-
-    questionText.textContent =
-        question.question;
-
-
-    questionMessage.textContent =
-        "";
-
-
-    answerList.innerHTML =
-        "";
-
-
-    // Thanh thời gian câu hỏi.
-    if (
-        progressBar
-    ) {
-
-        progressBar.style.transform =
-            "scaleX(1)";
-
-        progressBar.style.transition =
-            "none";
-
-
-        requestAnimationFrame(
-            function () {
-
-                progressBar.style.transition =
-                    "transform 0.95s linear";
-
-                progressBar.style.transform =
-                    "scaleX(0)";
-
-            }
+        adminButton.classList.add(
+            "hidden"
         );
 
     }
-
-
-    // Tạo 4 đáp án.
-    question.answers.forEach(
-        function (
-            answer,
-            index
-        ) {
-
-            const button =
-                document.createElement(
-                    "button"
-                );
-
-
-            button.className =
-                "answer-button";
-
-
-            button.textContent =
-                `${String.fromCharCode(
-                    65 + index
-                )}. ${answer}`;
-
-
-            button.addEventListener(
-                "click",
-                function () {
-
-                    answerQuestion(
-                        index,
-                        question.correct
-                    );
-
-                }
-            );
-
-
-            answerList.appendChild(
-                button
-            );
-
-        }
-    );
-
-
-    modal.style.display =
-        "flex";
 
 }
 
 
-// ================================
-// TRẢ LỜI CÂU HỎI
-// ================================
+/* =========================================================
+   19. START GAME
+========================================================= */
 
-function answerQuestion(
-    selectedAnswer,
-    correctAnswer
-) {
-
-    if (
-        !questionActive
-    ) {
-
-        return;
-
-    }
+startButton.addEventListener(
+    "click",
+    startGame
+);
 
 
-    const buttons =
-        document.querySelectorAll(
-            ".answer-button"
-        );
+function startGame() {
+
+    if (gameRunning) return;
 
 
-    const questionMessage =
-        document.getElementById(
-            "questionMessage"
-        );
+    score = 0;
 
+    timeLeft =
+        GAME_DURATION;
 
-    // Chặn bấm nhiều lần.
-    buttons.forEach(
-        function (button) {
+    gameRunning = true;
 
-            button.disabled =
-                true;
-
-        }
-    );
-
-
-    // =================================
-    // ĐÚNG
-    // =================================
-
-    if (
-        selectedAnswer ===
-        correctAnswer
-    ) {
-
-        buttons[
-            selectedAnswer
-        ].classList.add(
-            "correct"
-        );
-
-
-        questionMessage.textContent =
-            "✅ CHÍNH XÁC! +1 ĐIỂM";
-
-
-        score++;
-
-    }
-
-
-    // =================================
-    // SAI
-    // =================================
-
-    else {
-
-        buttons[
-            selectedAnswer
-        ].classList.add(
-            "wrong"
-        );
-
-
-        buttons[
-            correctAnswer
-        ].classList.add(
-            "correct"
-        );
-
-
-        questionMessage.textContent =
-            "❌ SAI RỒI! KHÔNG ĐƯỢC ĐIỂM";
-
-    }
-
-
-    questionsAnswered++;
-
-
-    updateUI();
-
-
-    clearTimeout(
-        questionAnswerTimeout
-    );
-
-
-    questionAnswerTimeout =
-        setTimeout(
-            function () {
-
-                closeQuestion();
-
-            },
-            900
-        );
-
-}
-
-
-// ================================
-// ĐÓNG CÂU HỎI
-// ================================
-
-function closeQuestion() {
-
-    clearTimeout(
-        questionAnswerTimeout
-    );
-
-
-    const modal =
-        document.getElementById(
-            "questionModal"
-        );
-
-
-    if (
-        modal
-    ) {
-
-        modal.remove();
-
-    }
-
+    gameEnded = false;
 
     questionActive = false;
 
 
-    if (
-        gameEnded ||
-        timeLeft <= 0
-    ) {
+    /* ÂM NHẠC */
 
-        return;
+    startBackgroundMusic();
 
-    }
-
-
-    gameRunning = true;
-
-
-    restoreMusicVolume();
-
-
-    // Cho gà xuất hiện lại nhanh.
-    scheduleChickenSpawn(80);
-
-}
-
-
-// ================================
-// TRẠNG THÁI KỊCH TÍNH
-// ================================
-
-function updateDramaticState() {
-
-    document.body.classList.remove(
-        "game-danger",
-        "game-critical"
-    );
-
-
-    timerElement.classList.remove(
-        "timer-warning",
-        "timer-critical"
-    );
-
-
-    removeLastSecondsText();
-
-
-    // 6 -> 4 giây.
-    if (
-        timeLeft <= 6 &&
-        timeLeft > 3
-    ) {
-
-        document.body.classList.add(
-            "game-danger"
-        );
-
-
-        timerElement.classList.add(
-            "timer-warning"
-        );
-
-    }
-
-
-    // 3 -> 1 giây.
-    else if (
-        timeLeft <= 3 &&
-        timeLeft > 0
-    ) {
-
-        document.body.classList.add(
-            "game-critical"
-        );
-
-
-        timerElement.classList.add(
-            "timer-critical"
-        );
-
-
-        showLastSecondsText();
-
-    }
-
-
-    restoreMusicVolume();
-
-}
-
-
-// ================================
-// CHỮ CẢNH BÁO
-// ================================
-
-function showLastSecondsText() {
-
-    if (
-        document.getElementById(
-            "lastSecondsText"
-        )
-    ) {
-
-        return;
-
-    }
-
-
-    const text =
-        document.createElement(
-            "div"
-        );
-
-
-    text.id =
-        "lastSecondsText";
-
-
-    text.className =
-        "last-seconds-text";
-
-
-    text.textContent =
-        timeLeft <= 1
-            ? "🔥 ĐỢT CUỐI!"
-            : "⚠️ NHANH LÊN!";
-
-
-    gameArea.appendChild(
-        text
-    );
-
-}
-
-
-// ================================
-// XÓA CHỮ CẢNH BÁO
-// ================================
-
-function removeLastSecondsText() {
-
-    const text =
-        document.getElementById(
-            "lastSecondsText"
-        );
-
-
-    if (
-        text
-    ) {
-
-        text.remove();
-
-    }
-
-}
-
-
-// ================================
-// UPDATE UI
-// ================================
-
-function updateUI() {
 
     scoreElement.textContent =
         score;
-
 
     timerElement.textContent =
         timeLeft;
 
 
-    // 5 điểm = 1 lượt quay.
-    const availableSpins =
-        Math.floor(
-            score / 5
-        );
-
-
-    spinCountElement.textContent =
-        availableSpins;
-
-
-    updateDramaticState();
-
-}
-
-
-// ================================
-// TỐC ĐỘ SPAWN
-// ================================
-
-// 152 BPM:
-// 1 beat ≈ 395ms
-//
-// Game tăng tốc theo thời gian.
-
-function getSpawnInterval() {
-
-    // 15 -> 13 giây
-    if (
-        timeLeft >= 13
-    ) {
-
-        return 790;
-
-    }
-
-
-    // 12 -> 10 giây
-    if (
-        timeLeft >= 10
-    ) {
-
-        return 590;
-
-    }
-
-
-    // 9 -> 7 giây
-    if (
-        timeLeft >= 7
-    ) {
-
-        return 395;
-
-    }
-
-
-    // 6 -> 4 giây
-    if (
-        timeLeft >= 4
-    ) {
-
-        return 295;
-
-    }
-
-
-    // 3 -> 0 giây
-    return 198;
-
-}
-
-
-// ================================
-// SỐ GÀ TỐI ĐA
-// ================================
-
-function getMaxChickens() {
-
-    if (
-        timeLeft >= 13
-    ) {
-
-        return 3;
-
-    }
-
-
-    if (
-        timeLeft >= 10
-    ) {
-
-        return 4;
-
-    }
-
-
-    if (
-        timeLeft >= 7
-    ) {
-
-        return 5;
-
-    }
-
-
-    if (
-        timeLeft >= 4
-    ) {
-
-        return 7;
-
-    }
-
-
-    return 9;
-
-}
-
-
-// ================================
-// THỜI GIAN SỐNG CỦA GÀ
-// ================================
-
-function getChickenLife() {
-
-    if (
-        timeLeft >= 10
-    ) {
-
-        return 1650;
-
-    }
-
-
-    if (
-        timeLeft >= 7
-    ) {
-
-        return 1450;
-
-    }
-
-
-    if (
-        timeLeft >= 4
-    ) {
-
-        return 1200;
-
-    }
-
-
-    return 900;
-
-}
-
-
-// ================================
-// LÊN LỊCH SPAWN
-// ================================
-
-function scheduleChickenSpawn(
-    delay = null
-) {
-
-    clearTimeout(
-        chickenSpawnTimeout
+    startMessage.classList.add(
+        "hidden"
     );
 
 
-    chickenSpawnTimeout =
+    removeAllChickens();
+
+
+    clearInterval(
+        gameTimer
+    );
+
+    clearTimeout(
+        chickenTimer
+    );
+
+
+    /* GAME TIMER */
+
+    gameTimer =
+        setInterval(
+            gameTick,
+            1000
+        );
+
+
+    /*
+       Spawn con đầu tiên ngay lập tức
+    */
+
+    spawnChicken();
+
+
+    /*
+       Sau đó bắt đầu chạy theo beat
+    */
+
+    scheduleNextChicken();
+
+}
+
+
+/* =========================================================
+   20. GAME TIMER
+========================================================= */
+
+function gameTick() {
+
+    if (!gameRunning) return;
+
+
+    timeLeft--;
+
+    timerElement.textContent =
+        timeLeft;
+
+
+    if (timeLeft <= 0) {
+
+        endGame();
+
+    }
+
+}
+
+
+/* =========================================================
+   21. GAME PROGRESS
+========================================================= */
+
+function getGameProgress() {
+
+    const elapsed =
+        GAME_DURATION -
+        timeLeft;
+
+
+    return Math.min(
+        1,
+        Math.max(
+            0,
+            elapsed / GAME_DURATION
+        )
+    );
+
+}
+
+
+/* =========================================================
+   22. CHICKEN SPEED
+========================================================= */
+
+function getChickenBeatMultiplier() {
+
+    const progress =
+        getGameProgress();
+
+
+    /*
+       0s
+       2.0 beat / gà
+
+       15s
+       ~1.65 beat / gà
+
+       30s
+       ~1.25 beat / gà
+
+       45s
+       ~0.8 beat / gà
+
+       60s
+       0.5 beat / gà
+    */
+
+
+    if (progress < 0.15) {
+
+        return 2.0;
+
+    }
+
+
+    if (progress < 0.35) {
+
+        return 1.65;
+
+    }
+
+
+    if (progress < 0.55) {
+
+        return 1.3;
+
+    }
+
+
+    if (progress < 0.75) {
+
+        return 0.9;
+
+    }
+
+
+    return 0.5;
+
+}
+
+
+/* =========================================================
+   23. GET CHICKEN SPAWN TIME
+========================================================= */
+
+function getChickenSpawnTime() {
+
+    const multiplier =
+        getChickenBeatMultiplier();
+
+
+    let delay =
+        BEAT_TIME *
+        multiplier;
+
+
+    /*
+       Không cho vượt quá 1 giây
+    */
+
+    delay =
+        Math.min(
+            1000,
+            delay
+        );
+
+
+    /*
+       Cuối game không xuống quá thấp
+       để trình duyệt không bị spam DOM.
+    */
+
+    delay =
+        Math.max(
+            180,
+            delay
+        );
+
+
+    return Math.round(
+        delay
+    );
+
+}
+
+
+/* =========================================================
+   24. SCHEDULE NEXT CHICKEN
+========================================================= */
+
+function scheduleNextChicken() {
+
+    if (!gameRunning) return;
+
+
+    clearTimeout(
+        chickenTimer
+    );
+
+
+    const delay =
+        getChickenSpawnTime();
+
+
+    chickenTimer =
         setTimeout(
-            function () {
+            () => {
 
-                if (
-                    gameEnded
-                ) {
-
+                if (!gameRunning) {
                     return;
+                }
+
+
+                /*
+                   Nếu đang trả lời câu hỏi
+                   thì không spawn con mới.
+                */
+
+                if (!questionActive) {
+
+                    spawnChicken();
 
                 }
 
 
-                if (
-                    gameRunning &&
-                    !questionActive
-                ) {
+                /*
+                   Lập lịch tiếp theo.
+                */
 
-                    const chickenCount =
-                        gameArea.querySelectorAll(
-                            ".chicken"
-                        ).length;
-
-
-                    if (
-                        chickenCount <
-                        getMaxChickens()
-                    ) {
-
-                        spawnChicken();
-
-                    }
-
-                }
-
-
-                if (
-                    !gameEnded
-                ) {
-
-                    scheduleChickenSpawn();
-
-                }
+                scheduleNextChicken();
 
             },
-
-            delay !== null
-                ? delay
-                : (
-                    questionActive
-                        ? 120
-                        : getSpawnInterval()
-                )
-
+            delay
         );
 
 }
 
 
-// ================================
-// TẠO GÀ
-// ================================
+/* =========================================================
+   25. CHICKEN LIFETIME
+========================================================= */
+
+function getChickenLifetime() {
+
+    const progress =
+        getGameProgress();
+
+
+    /*
+       Tăng tốc theo đường cong.
+
+       Đầu game:
+       ~2200ms
+
+       Giữa:
+       ~1400ms
+
+       Cuối:
+       ~650ms
+    */
+
+    const curve =
+        Math.pow(
+            progress,
+            1.45
+        );
+
+
+    const lifetime =
+        CHICKEN_LIFETIME_START -
+        (
+            CHICKEN_LIFETIME_START -
+            CHICKEN_LIFETIME_END
+        ) *
+        curve;
+
+
+    return Math.round(
+        lifetime
+    );
+
+}
+
+
+/* =========================================================
+   26. SPAWN CHICKEN
+========================================================= */
 
 function spawnChicken() {
 
-    if (
-        !gameRunning ||
-        questionActive ||
-        gameEnded
-    ) {
+    if (!gameRunning) return;
 
-        return;
-
-    }
+    if (questionActive) return;
 
 
     const chicken =
@@ -2815,10 +1660,12 @@ function spawnChicken() {
         "chicken";
 
 
-    // 85% gà 🐔
-    // 15% gà con 🐥
+    /*
+       Gà thường nhiều hơn gà con
+    */
+
     chicken.textContent =
-        Math.random() > 0.15
+        Math.random() > 0.25
             ? "🐔"
             : "🐥";
 
@@ -2826,160 +1673,58 @@ function spawnChicken() {
     const areaWidth =
         gameArea.clientWidth;
 
-
     const areaHeight =
         gameArea.clientHeight;
 
 
-    const safeWidth =
+    const minX = 25;
+
+    const maxX =
         Math.max(
-            60,
+            minX,
             areaWidth - 90
         );
 
 
-    const safeHeight =
+    const minY = 100;
+
+    const maxY =
         Math.max(
-            120,
-            areaHeight - 190
+            minY,
+            areaHeight - 130
         );
 
 
     const x =
-        Math.max(
-            10,
-            Math.random() *
-            safeWidth
+        randomNumber(
+            minX,
+            maxX
         );
 
 
     const y =
-        80 +
-        Math.random() *
-        safeHeight;
+        randomNumber(
+            minY,
+            maxY
+        );
 
 
     chicken.style.left =
         `${x}px`;
 
-
     chicken.style.top =
         `${y}px`;
 
 
-    gameArea.appendChild(
-        chicken
-    );
-
-
-    // ================================
-    // CHUYỂN ĐỘNG
-    // ================================
-
-    let movementDuration;
-
-
-    if (
-        timeLeft >= 10
-    ) {
-
-        movementDuration =
-            1350 +
-            Math.random() * 450;
-
-    }
-
-    else if (
-        timeLeft >= 7
-    ) {
-
-        movementDuration =
-            1050 +
-            Math.random() * 350;
-
-    }
-
-    else if (
-        timeLeft >= 4
-    ) {
-
-        movementDuration =
-            800 +
-            Math.random() * 280;
-
-    }
-
-    else {
-
-        movementDuration =
-            560 +
-            Math.random() * 220;
-
-    }
-
-
-    const direction =
-        Math.random() > 0.5
-            ? 1
-            : -1;
-
-
-    const moveX =
-        direction *
-        (
-            100 +
-            Math.random() * 200
-        );
-
-
-    const moveY =
-        (
-            Math.random() -
-            0.5
-        ) *
-        150;
-
-
-    chicken.animate(
-        [
-            {
-                transform:
-                    "translate(0,0) scale(1)"
-            },
-
-            {
-                transform:
-                    `translate(
-                        ${moveX}px,
-                        ${moveY}px
-                    )
-                    scale(1.05)`
-            }
-        ],
-
-        {
-            duration:
-                movementDuration,
-
-            easing:
-                "ease-in-out",
-
-            fill:
-                "forwards"
-        }
-    );
-
-
-    // ================================
-    // CLICK GÀ
-    // ================================
+    /*
+       CLICK GÀ
+    */
 
     chicken.addEventListener(
         "click",
         function (event) {
 
             event.stopPropagation();
-
 
             hitChicken(
                 chicken
@@ -2989,190 +1734,25 @@ function spawnChicken() {
     );
 
 
-    // ================================
-    // TỰ BIẾN MẤT
-    // ================================
+    gameArea.appendChild(
+        chicken
+    );
 
-    const life =
-        getChickenLife();
+
+    /*
+       Gà tự biến mất.
+       Cuối game biến mất nhanh hơn.
+    */
+
+    const lifetime =
+        getChickenLifetime();
 
 
     setTimeout(
-        function () {
+        () => {
 
             if (
-                chicken.parentNode &&
-                !chicken.classList.contains(
-                    "hit"
-                )
-            ) {
-
-                chicken.remove();
-
-            }
-
-        },
-        life
-    );
-
-}
-
-
-// ================================
-// LẤY VỊ TRÍ THẬT CỦA GÀ
-// ================================
-
-function getChickenPosition(
-    chicken
-) {
-
-    const gameRect =
-        gameArea.getBoundingClientRect();
-
-
-    const chickenRect =
-        chicken.getBoundingClientRect();
-
-
-    return {
-
-        x:
-            chickenRect.left -
-            gameRect.left +
-            chickenRect.width / 2,
-
-        y:
-            chickenRect.top -
-            gameRect.top +
-            chickenRect.height / 2
-
-    };
-
-}
-
-
-// ================================
-// CHƯỞNG GÀ
-// ================================
-
-function hitChicken(
-    chicken
-) {
-
-    if (
-
-        !gameRunning ||
-
-        questionActive ||
-
-        gameEnded ||
-
-        chicken.classList.contains(
-            "hit"
-        )
-
-    ) {
-
-        return;
-
-    }
-
-
-    // Lấy vị trí hiện tại.
-    const position =
-        getChickenPosition(
-            chicken
-        );
-
-
-    // =================================
-    // HỦY ANIMATION BAY
-    // =================================
-    //
-    // Rất quan trọng:
-    // Animation bay cũng điều khiển transform.
-    // Nếu không hủy thì animation hit
-    // có thể bị xung đột.
-
-    chicken
-        .getAnimations()
-        .forEach(
-            function (animation) {
-
-                animation.cancel();
-
-            }
-        );
-
-
-    chicken.classList.add(
-        "hit"
-    );
-
-
-    chicken.style.zIndex =
-        "80";
-
-
-    // Tạm dừng game.
-    gameRunning =
-        false;
-
-
-    clearTimeout(
-        chickenSpawnTimeout
-    );
-
-
-    // =================================
-    // ÂM THANH HIT
-    // =================================
-
-    playHitSound();
-
-
-    // =================================
-    // HIỆU ỨNG
-    // =================================
-
-    createHitFlash(
-        position.x,
-        position.y
-    );
-
-
-    createHitRipple(
-        position.x,
-        position.y
-    );
-
-
-    createHand(
-        position.x,
-        position.y
-    );
-
-
-    createHitLabel(
-        position.x,
-        position.y
-    );
-
-
-    createScorePopup(
-        position.x,
-        position.y
-    );
-
-
-    // =================================
-    // XÓA GÀ
-    // =================================
-
-    setTimeout(
-        function () {
-
-            if (
+                chicken &&
                 chicken.parentNode
             ) {
 
@@ -3181,145 +1761,172 @@ function hitChicken(
             }
 
         },
-        430
-    );
-
-
-    // =================================
-    // MỞ CÂU HỎI
-    // =================================
-
-    setTimeout(
-        function () {
-
-            if (
-                !gameEnded &&
-                timeLeft > 0 &&
-                !questionActive
-            ) {
-
-                showQuestion();
-
-            }
-
-        },
-        280
+        lifetime
     );
 
 }
 
 
-// ================================
-// FLASH
-// ================================
+/* =========================================================
+   27. RANDOM
+========================================================= */
 
-function createHitFlash(
-    x,
-    y
+function randomNumber(
+    min,
+    max
 ) {
 
-    const flash =
-        document.createElement(
-            "div"
+    return Math.floor(
+        Math.random() *
+        (max - min + 1)
+    ) + min;
+
+}
+
+
+/* =========================================================
+   28. REMOVE CHICKENS
+========================================================= */
+
+function removeAllChickens() {
+
+    const chickens =
+        gameArea.querySelectorAll(
+            ".chicken"
         );
 
 
-    flash.className =
-        "hit-flash";
-
-
-    flash.style.setProperty(
-        "--hit-x",
-        `${x}px`
-    );
-
-
-    flash.style.setProperty(
-        "--hit-y",
-        `${y}px`
-    );
-
-
-    gameArea.appendChild(
-        flash
-    );
-
-
-    setTimeout(
-        function () {
-
-            if (
-                flash.parentNode
-            ) {
-
-                flash.remove();
-
-            }
-
-        },
-        350
+    chickens.forEach(
+        chicken =>
+            chicken.remove()
     );
 
 }
 
 
-// ================================
-// RIPPLE
-// ================================
+/* =========================================================
+   29. HIT CHICKEN
+========================================================= */
 
-function createHitRipple(
-    x,
-    y
+function hitChicken(
+    chicken
 ) {
 
-    const ripple =
-        document.createElement(
-            "div"
+    if (!gameRunning) return;
+
+    if (questionActive) return;
+
+
+    questionActive = true;
+
+
+    /*
+       VỊ TRÍ HIT
+    */
+
+    let hitX = 50;
+
+    let hitY = 50;
+
+
+    if (chicken) {
+
+        hitX =
+            chicken.offsetLeft +
+            chicken.offsetWidth / 2;
+
+        hitY =
+            chicken.offsetTop +
+            chicken.offsetHeight / 2;
+
+    }
+
+
+    /*
+       HIT SOUND
+    */
+
+    playHitSound();
+
+
+    /*
+       GÀ BỊ ĐÁNH
+    */
+
+    if (
+        chicken &&
+        chicken.parentNode
+    ) {
+
+        chicken.classList.add(
+            "hit"
         );
 
 
-    ripple.className =
-        "hit-ripple";
+        setTimeout(
+            () => {
+
+                if (
+                    chicken &&
+                    chicken.parentNode
+                ) {
+
+                    chicken.remove();
+
+                }
+
+            },
+            250
+        );
+
+    }
 
 
-    ripple.style.left =
-        `${x}px`;
+    /*
+       EXPLOSION
+    */
 
-
-    ripple.style.top =
-        `${y}px`;
-
-
-    gameArea.appendChild(
-        ripple
+    createHitExplosion(
+        hitX,
+        hitY
     );
 
 
+    /*
+       HAND
+    */
+
+    showHitEffect(
+        hitX,
+        hitY
+    );
+
+
+    /*
+       CÂU HỎI
+    */
+
     setTimeout(
-        function () {
+        () => {
 
-            if (
-                ripple.parentNode
-            ) {
+            if (!gameRunning) return;
 
-                ripple.remove();
-
-            }
+            showQuestion();
 
         },
-        550
+        180
     );
 
 }
 
 
-// ================================
-// BÀN TAY
-// ================================
+/* =========================================================
+   30. HIT HAND EFFECT
+========================================================= */
 
-function createHand(
-    x,
-    y
+function showHitEffect(
+    x = null,
+    y = null
 ) {
 
     const hand =
@@ -3329,19 +1936,39 @@ function createHand(
 
 
     hand.className =
-        "hand dramatic-hand";
+        "hit-hand";
 
 
     hand.textContent =
-        "✋";
+        "🖐️";
 
 
-    hand.style.left =
-        `${x}px`;
+    if (
+        x !== null &&
+        y !== null
+    ) {
 
+        hand.style.left =
+            `${x - 35}px`;
 
-    hand.style.top =
-        `${y}px`;
+        hand.style.top =
+            `${y - 45}px`;
+
+    } else {
+
+        hand.style.left =
+            `${randomNumber(
+                20,
+                75
+            )}%`;
+
+        hand.style.top =
+            `${randomNumber(
+                25,
+                70
+            )}%`;
+
+    }
 
 
     gameArea.appendChild(
@@ -3350,9 +1977,10 @@ function createHand(
 
 
     setTimeout(
-        function () {
+        () => {
 
             if (
+                hand &&
                 hand.parentNode
             ) {
 
@@ -3361,961 +1989,1538 @@ function createHand(
             }
 
         },
-        520
+        650
     );
 
 }
 
 
-// ================================
-// CHỮ HIT
-// ================================
+/* =========================================================
+   31. HIT EXPLOSION
+========================================================= */
 
-function createHitLabel(
+function createHitExplosion(
     x,
     y
 ) {
 
-    const label =
+    const explosion =
         document.createElement(
             "div"
         );
 
 
-    label.className =
-        "hit-label";
+    explosion.className =
+        "hit-explosion";
 
 
-    label.textContent =
-        "⚡ HIT!";
-
-
-    label.style.left =
+    explosion.style.left =
         `${x}px`;
 
-
-    label.style.top =
-        `${y - 42}px`;
+    explosion.style.top =
+        `${y}px`;
 
 
     gameArea.appendChild(
-        label
+        explosion
     );
 
 
+    /*
+       12 PARTICLES
+    */
+
+    for (
+        let i = 0;
+        i < 12;
+        i++
+    ) {
+
+        createHitParticle(
+            x,
+            y
+        );
+
+    }
+
+
     setTimeout(
-        function () {
+        () => {
 
             if (
-                label.parentNode
+                explosion &&
+                explosion.parentNode
             ) {
 
-                label.remove();
+                explosion.remove();
 
             }
 
         },
-        620
+        500
     );
 
 }
 
 
-// ================================
-// +1 ĐIỂM
-// ================================
+/* =========================================================
+   32. HIT PARTICLE
+========================================================= */
 
-function createScorePopup(
+function createHitParticle(
     x,
     y
 ) {
 
-    const popup =
+    const particle =
         document.createElement(
             "div"
         );
 
 
-    popup.className =
-        "score-popup dramatic-score";
+    particle.className =
+        "hit-particle";
 
 
-    popup.textContent =
-        "🎯 +1";
-
-
-    popup.style.left =
+    particle.style.left =
         `${x}px`;
 
+    particle.style.top =
+        `${y}px`;
 
-    popup.style.top =
-        `${y - 4}px`;
+
+    const angle =
+        Math.random() *
+        Math.PI *
+        2;
+
+
+    const distance =
+        randomNumber(
+            45,
+            100
+        );
+
+
+    const particleX =
+        Math.cos(angle) *
+        distance;
+
+
+    const particleY =
+        Math.sin(angle) *
+        distance;
+
+
+    particle.style.setProperty(
+        "--particle-x",
+        `${particleX}px`
+    );
+
+
+    particle.style.setProperty(
+        "--particle-y",
+        `${particleY}px`
+    );
 
 
     gameArea.appendChild(
-        popup
+        particle
     );
 
 
     setTimeout(
-        function () {
+        () => {
 
             if (
-                popup.parentNode
+                particle &&
+                particle.parentNode
             ) {
 
-                popup.remove();
+                particle.remove();
 
             }
 
         },
-        750
+        650
     );
 
 }
 
 
-// ================================
-// START GAME
-// ================================
+/* =========================================================
+   33. QUESTION
+========================================================= */
 
-startButton.addEventListener(
-    "click",
-    startGame
-);
+function showQuestion() {
+
+    const question =
+        questionBank[
+            randomNumber(
+                0,
+                questionBank.length - 1
+            )
+        ];
 
 
-function startGame() {
+    const overlay =
+        document.createElement(
+            "div"
+        );
 
-    // Dọn timer cũ.
-    clearInterval(
-        timerInterval
+
+    overlay.className =
+        "question-overlay";
+
+
+    const modal =
+        document.createElement(
+            "div"
+        );
+
+
+    modal.className =
+        "question-modal";
+
+
+    const title =
+        document.createElement(
+            "h2"
+        );
+
+
+    title.textContent =
+        "🐔 CÂU HỎI";
+
+
+    const questionText =
+        document.createElement(
+            "p"
+        );
+
+
+    questionText.className =
+        "question-text";
+
+
+    questionText.textContent =
+        question.question;
+
+
+    const answers =
+        document.createElement(
+            "div"
+        );
+
+
+    answers.className =
+        "question-answers";
+
+
+    question.answers.forEach(
+        (answer, index) => {
+
+            const button =
+                document.createElement(
+                    "button"
+                );
+
+
+            button.className =
+                "answer-button";
+
+
+            button.type =
+                "button";
+
+
+            button.textContent =
+                `${String.fromCharCode(
+                    65 + index
+                )}. ${answer}`;
+
+
+            button.addEventListener(
+                "click",
+                () => {
+
+                    answerQuestion(
+                        index,
+                        question.correct,
+                        overlay
+                    );
+
+                }
+            );
+
+
+            answers.appendChild(
+                button
+            );
+
+        }
     );
 
 
-    clearTimeout(
-        chickenSpawnTimeout
+    modal.appendChild(
+        title
+    );
+
+    modal.appendChild(
+        questionText
+    );
+
+    modal.appendChild(
+        answers
     );
 
 
-    clearTimeout(
-        questionAnswerTimeout
+    overlay.appendChild(
+        modal
     );
 
 
-    // =================================
-    // XÓA HIỆU ỨNG CŨ
-    // =================================
+    document.body.appendChild(
+        overlay
+    );
 
-    document
-        .querySelectorAll(
-            ".chicken, .hand, .hit-flash, .hit-ripple, .score-popup, .hit-label, #lastSecondsText"
+}
+
+
+/* =========================================================
+   34. ANSWER
+========================================================= */
+
+function answerQuestion(
+    selected,
+    correct,
+    overlay
+) {
+
+    const buttons =
+        overlay.querySelectorAll(
+            ".answer-button"
+        );
+
+
+    buttons.forEach(
+        button => {
+
+            button.disabled =
+                true;
+
+        }
+    );
+
+
+    if (
+        selected === correct
+    ) {
+
+        score++;
+
+
+        scoreElement.textContent =
+            score;
+
+
+        buttons[selected]
+            ?.classList.add(
+                "correct"
+            );
+
+
+        showAnswerResult(
+            overlay,
+            true
+        );
+
+
+    } else {
+
+        buttons[selected]
+            ?.classList.add(
+                "wrong"
+            );
+
+
+        buttons[correct]
+            ?.classList.add(
+                "correct"
+            );
+
+
+        showAnswerResult(
+            overlay,
+            false
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   35. ANSWER RESULT
+========================================================= */
+
+function showAnswerResult(
+    overlay,
+    correct
+) {
+
+    const result =
+        document.createElement(
+            "div"
+        );
+
+
+    result.className =
+        correct
+            ? "answer-result correct-result"
+            : "answer-result wrong-result";
+
+
+    result.textContent =
+        correct
+            ? "🎉 Chính xác! +1 điểm"
+            : "❌ Sai rồi!";
+
+
+    overlay
+        .querySelector(
+            ".question-modal"
         )
-        .forEach(
-            function (element) {
+        ?.appendChild(
+            result
+        );
 
-                element.remove();
+
+    setTimeout(
+        () => {
+
+            if (
+                overlay &&
+                overlay.parentNode
+            ) {
+
+                overlay.remove();
 
             }
-        );
 
 
-    // Xóa modal cũ.
-    const oldModal =
-        document.getElementById(
-            "questionModal"
-        );
+            questionActive =
+                false;
 
 
-    if (
-        oldModal
-    ) {
+            /*
+               Sau khi trả lời xong,
+               tiếp tục chuỗi spawn theo beat.
+            */
 
-        oldModal.remove();
+            if (gameRunning) {
 
-    }
+                scheduleNextChicken();
 
+            }
 
-    // =================================
-    // RESET
-    // =================================
-
-    score =
-        0;
-
-
-    timeLeft =
-        GAME_DURATION;
-
-
-    currentSpins =
-        0;
-
-
-    questionsAnswered =
-        0;
-
-
-    questionActive =
-        false;
-
-
-    gameEnded =
-        false;
-
-
-    gameRunning =
-        true;
-
-
-    wheelSpinning =
-        false;
-
-
-    // Xáo câu hỏi.
-    resetQuestionPool();
-
-
-    // =================================
-    // RESET HIỆU ỨNG
-    // =================================
-
-    document.body.classList.remove(
-        "game-danger",
-        "game-critical"
+        },
+        850
     );
-
-
-    timerElement.classList.remove(
-        "timer-warning",
-        "timer-critical"
-    );
-
-
-    gameScreen.classList.remove(
-        "critical-beat"
-    );
-
-
-    gameArea.classList.remove(
-        "music-beat",
-        "music-beat-danger"
-    );
-
-
-    // =================================
-    // UI
-    // =================================
-
-    updateUI();
-
-
-    startMessage.style.display =
-        "none";
-
-
-    startButton.disabled =
-        true;
-
-
-    // =================================
-    // BẮT ĐẦU NHẠC
-    // =================================
-
-    startBackgroundMusic();
-
-
-    // =================================
-    // GÀ ĐẦU TIÊN
-    // =================================
-
-    spawnChicken();
-
-
-    scheduleChickenSpawn(
-        250
-    );
-
-
-    // =================================
-    // COUNTDOWN
-    // =================================
-
-    timerInterval =
-        setInterval(
-            function () {
-
-                // Đang trả lời câu hỏi
-                // thì thời gian tạm dừng.
-
-                if (
-                    !gameRunning ||
-                    questionActive ||
-                    gameEnded
-                ) {
-
-                    return;
-
-                }
-
-
-                timeLeft--;
-
-
-                updateUI();
-
-
-                // Hết giờ.
-                if (
-                    timeLeft <= 0
-                ) {
-
-                    timeLeft =
-                        0;
-
-
-                    updateUI();
-
-
-                    endGame();
-
-                }
-
-            },
-            1000
-        );
 
 }
 
 
-// ================================
-// PRIZES
-// ================================
+/* =========================================================
+   36. END GAME
+========================================================= */
 
-const prizes = [
+async function endGame() {
 
-    "🎁 QUÀ TẶNG",
-
-    "⭐ +10 ĐIỂM",
-
-    "🎁 QUÀ TẶNG",
-
-    "🍀 MAY MẮN",
-
-    "🎁 QUÀ TẶNG",
-
-    "💰 +20 ĐIỂM",
-
-    "🎁 QUÀ TẶNG",
-
-    "🏆 JACKPOT"
-
-];
+    if (!gameRunning) return;
 
 
-// ================================
-// END GAME
-// ================================
+    gameRunning = false;
 
-function endGame() {
+    gameEnded = true;
 
-    if (
-        gameEnded
-    ) {
+    questionActive = false;
 
-        return;
-
-    }
-
-
-    gameEnded =
-        true;
-
-
-    gameRunning =
-        false;
-
-
-    questionActive =
-        false;
-
-
-    // =================================
-    // DỪNG TIMER
-    // =================================
 
     clearInterval(
-        timerInterval
+        gameTimer
     );
-
 
     clearTimeout(
-        chickenSpawnTimeout
+        chickenTimer
     );
 
 
-    clearTimeout(
-        questionAnswerTimeout
-    );
+    gameTimer = null;
+
+    chickenTimer = null;
 
 
-    // =================================
-    // DỪNG NHẠC
-    // =================================
+    /*
+       DỪNG NHẠC
+    */
 
     stopBackgroundMusic();
 
 
-    // =================================
-    // RESET HIỆU ỨNG
-    // =================================
+    /*
+       XÓA GÀ
+    */
 
-    document.body.classList.remove(
-        "game-danger",
-        "game-critical"
-    );
+    removeAllChickens();
 
 
-    timerElement.classList.remove(
-        "timer-warning",
-        "timer-critical"
-    );
-
-
-    gameScreen.classList.remove(
-        "critical-beat"
-    );
-
-
-    // =================================
-    // XÓA TẤT CẢ GÀ
-    // =================================
+    /*
+       XÓA CÂU HỎI
+    */
 
     document
         .querySelectorAll(
-            ".chicken, .hand, .hit-flash, .hit-ripple, .score-popup, .hit-label, #lastSecondsText"
+            ".question-overlay"
         )
         .forEach(
-            function (element) {
-
-                element.remove();
-
-            }
+            item =>
+                item.remove()
         );
 
-
-    // =================================
-    // XÓA POPUP CÂU HỎI
-    // =================================
-
-    const questionModal =
-        document.getElementById(
-            "questionModal"
-        );
-
-
-    if (
-        questionModal
-    ) {
-
-        questionModal.remove();
-
-    }
-
-
-    // =================================
-    // TÍNH LƯỢT QUAY
-    // =================================
-
-    currentSpins =
-        Math.floor(
-            score / 5
-        );
-
-
-    // =================================
-    // HIỆN KẾT QUẢ
-    // =================================
 
     finalScoreElement.textContent =
         score;
 
 
-    finalSpinCountElement.textContent =
-        currentSpins;
-
-
-    // =================================
-    // CHUYỂN MÀN HÌNH
-    // =================================
-
-    gameScreen.classList.add(
-        "hidden"
+    showScreen(
+        resultScreen
     );
 
 
-    resultScreen.classList.remove(
-        "hidden"
+    await saveScore(
+        score
     );
 
 }
 
 
-// ================================
-// ĐI TỚI VÒNG QUAY
-// ================================
+/* =========================================================
+   37. SAVE SCORE
+========================================================= */
 
-goWheelButton.addEventListener(
-    "click",
-    function () {
+async function saveScore(
+    finalScore
+) {
 
-        resultScreen.classList.add(
-            "hidden"
-        );
+    if (!supabaseClient) {
 
-
-        wheelScreen.classList.remove(
-            "hidden"
-        );
-
-
-        remainingSpinElement.textContent =
-            currentSpins;
-
-
-        updateSpinButton();
-
-    }
-);
-
-
-// ================================
-// SPIN WHEEL
-// ================================
-
-spinButton.addEventListener(
-    "click",
-    spinWheel
-);
-
-
-// ================================
-// XÁC ĐỊNH PHẦN THƯỞNG
-// ================================
-
-function getPrizeIndex() {
-
-    const random =
-        Math.random() *
-        100;
-
-
-    if (
-        random < 25
-    ) {
-
-        return 0;
-
-    }
-
-
-    if (
-        random < 50
-    ) {
-
-        return 1;
-
-    }
-
-
-    if (
-        random < 70
-    ) {
-
-        return 2;
-
-    }
-
-
-    if (
-        random < 85
-    ) {
-
-        return 3;
-
-    }
-
-
-    if (
-        random < 95
-    ) {
-
-        return 4;
-
-    }
-
-
-    if (
-        random < 98
-    ) {
-
-        return 5;
-
-    }
-
-
-    if (
-        random < 99
-    ) {
-
-        return 6;
-
-    }
-
-
-    // Jackpot 1%.
-    return 7;
-
-}
-
-
-// ================================
-// QUAY VÒNG QUAY
-// ================================
-
-function spinWheel() {
-
-    if (
-        currentSpins <= 0 ||
-        wheelSpinning
-    ) {
+        scoreSaveMessage.textContent =
+            "Chưa cấu hình Supabase.";
 
         return;
 
     }
 
 
-    wheelSpinning =
-        true;
+    if (!currentUser) {
 
+        scoreSaveMessage.textContent =
+            "Không tìm thấy tài khoản.";
 
-    // Trừ lượt.
-    currentSpins--;
-
-
-    remainingSpinElement.textContent =
-        currentSpins;
-
-
-    spinButton.disabled =
-        true;
-
-
-    prizeResult.classList.add(
-        "hidden"
-    );
-
-
-    // =================================
-    // RANDOM THƯỞNG
-    // =================================
-
-    const prizeIndex =
-        getPrizeIndex();
-
-
-    const segmentAngle =
-        360 /
-        prizes.length;
-
-
-    const targetAngle =
-        360 -
-        (
-            prizeIndex *
-            segmentAngle +
-            segmentAngle / 2
-        );
-
-
-    // =================================
-    // QUAY 6 VÒNG
-    // =================================
-
-    wheelRotation +=
-        360 * 6 +
-        targetAngle;
-
-
-    wheel.style.transform =
-        `rotate(${wheelRotation}deg)`;
-
-
-    // =================================
-    // HIỆN KẾT QUẢ
-    // =================================
-
-    setTimeout(
-        function () {
-
-            prizeText.textContent =
-                prizes[
-                    prizeIndex
-                ];
-
-
-            prizeResult.classList.remove(
-                "hidden"
-            );
-
-
-            wheelSpinning =
-                false;
-
-
-            updateSpinButton();
-
-        },
-        4300
-    );
-
-}
-
-
-// ================================
-// UPDATE SPIN BUTTON
-// ================================
-
-function updateSpinButton() {
-
-    spinButton.disabled =
-        currentSpins <= 0 ||
-        wheelSpinning;
-
-}
-
-
-// ================================
-// RESTART
-// ================================
-
-restartButton.addEventListener(
-    "click",
-    restartGame
-);
-
-
-function restartGame() {
-
-    // =================================
-    // DỪNG TIMER / TIMEOUT
-    // =================================
-
-    clearInterval(
-        timerInterval
-    );
-
-
-    clearTimeout(
-        chickenSpawnTimeout
-    );
-
-
-    clearTimeout(
-        questionAnswerTimeout
-    );
-
-
-    // =================================
-    // DỪNG NHẠC
-    // =================================
-
-    stopBackgroundMusic();
-
-
-    // =================================
-    // XÓA MODAL
-    // =================================
-
-    const modal =
-        document.getElementById(
-            "questionModal"
-        );
-
-
-    if (
-        modal
-    ) {
-
-        modal.remove();
+        return;
 
     }
 
 
-    // =================================
-    // XÓA HIỆU ỨNG / GÀ
-    // =================================
+    scoreSaveMessage.textContent =
+        "Đang lưu điểm...";
 
-    document
-        .querySelectorAll(
-            ".chicken, .hand, .hit-flash, .hit-ripple, .score-popup, .hit-label, #lastSecondsText"
-        )
-        .forEach(
-            function (element) {
 
-                element.remove();
+    try {
+
+        const {
+            error
+        } =
+            await supabaseClient
+                .from("game_scores")
+                .insert({
+
+                    user_id:
+                        currentUser.id,
+
+                    score:
+                        finalScore
+
+                });
+
+
+        if (error) {
+
+            console.error(
+                "Save score error:",
+                error
+            );
+
+
+            scoreSaveMessage.textContent =
+                "Không lưu được điểm.";
+
+            return;
+
+        }
+
+
+        if (currentProfile) {
+
+            currentProfile.total_games =
+                Number(
+                    currentProfile.total_games || 0
+                ) + 1;
+
+
+            if (
+                finalScore >
+                Number(
+                    currentProfile.best_score || 0
+                )
+            ) {
+
+                currentProfile.best_score =
+                    finalScore;
+
+            }
+
+        }
+
+
+        scoreSaveMessage.textContent =
+            "✅ Điểm đã được lưu!";
+
+
+    } catch (error) {
+
+        console.error(error);
+
+        scoreSaveMessage.textContent =
+            "Có lỗi khi lưu điểm.";
+
+    }
+
+}
+
+
+/* =========================================================
+   38. PLAY AGAIN
+========================================================= */
+
+playAgainButton.addEventListener(
+    "click",
+    function () {
+
+        showScreen(
+            gameScreen
+        );
+
+
+        startMessage.classList.remove(
+            "hidden"
+        );
+
+
+        timerElement.textContent =
+            GAME_DURATION;
+
+
+        scoreElement.textContent =
+            "0";
+
+    }
+);
+
+
+/* =========================================================
+   39. LEADERBOARD
+========================================================= */
+
+leaderboardButton.addEventListener(
+    "click",
+    async function () {
+
+        await openLeaderboard();
+
+    }
+);
+
+
+resultLeaderboardButton.addEventListener(
+    "click",
+    async function () {
+
+        await openLeaderboard();
+
+    }
+);
+
+
+async function openLeaderboard() {
+
+    showScreen(
+        leaderboardScreen
+    );
+
+
+    await loadLeaderboard();
+
+}
+
+
+/* =========================================================
+   40. LOAD LEADERBOARD
+========================================================= */
+
+async function loadLeaderboard() {
+
+    leaderboardBody.innerHTML = `
+        <tr>
+            <td colspan="4">
+                Đang tải...
+            </td>
+        </tr>
+    `;
+
+
+    if (!supabaseClient) {
+
+        leaderboardBody.innerHTML = `
+            <tr>
+                <td colspan="4">
+                    Chưa cấu hình Supabase.
+                </td>
+            </tr>
+        `;
+
+        return;
+
+    }
+
+
+    const {
+        data,
+        error
+    } =
+        await supabaseClient
+            .from("profiles")
+            .select(
+                "username, best_score, total_games"
+            )
+            .eq(
+                "is_active",
+                true
+            )
+            .order(
+                "best_score",
+                {
+                    ascending:
+                        false
+                }
+            )
+            .order(
+                "total_games",
+                {
+                    ascending:
+                        false
+                }
+            )
+            .limit(50);
+
+
+    if (error) {
+
+        console.error(
+            "Leaderboard error:",
+            error
+        );
+
+
+        leaderboardBody.innerHTML = `
+            <tr>
+                <td colspan="4">
+                    Không tải được bảng xếp hạng.
+                </td>
+            </tr>
+        `;
+
+        return;
+
+    }
+
+
+    if (
+        !data ||
+        data.length === 0
+    ) {
+
+        leaderboardBody.innerHTML = `
+            <tr>
+                <td colspan="4">
+                    Chưa có người chơi.
+                </td>
+            </tr>
+        `;
+
+        return;
+
+    }
+
+
+    leaderboardBody.innerHTML =
+        "";
+
+
+    data.forEach(
+        (
+            player,
+            index
+        ) => {
+
+            const row =
+                document.createElement(
+                    "tr"
+                );
+
+
+            const rank =
+                document.createElement(
+                    "td"
+                );
+
+            rank.textContent =
+                index + 1;
+
+
+            const username =
+                document.createElement(
+                    "td"
+                );
+
+            username.textContent =
+                player.username;
+
+
+            const bestScore =
+                document.createElement(
+                    "td"
+                );
+
+            bestScore.textContent =
+                player.best_score || 0;
+
+
+            const games =
+                document.createElement(
+                    "td"
+                );
+
+            games.textContent =
+                player.total_games || 0;
+
+
+            row.appendChild(
+                rank
+            );
+
+            row.appendChild(
+                username
+            );
+
+            row.appendChild(
+                bestScore
+            );
+
+            row.appendChild(
+                games
+            );
+
+
+            if (
+                currentProfile &&
+                player.username ===
+                    currentProfile.username
+            ) {
+
+                row.classList.add(
+                    "current-player"
+                );
+
+            }
+
+
+            leaderboardBody.appendChild(
+                row
+            );
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   41. LEADERBOARD BACK
+========================================================= */
+
+leaderboardBackButton.addEventListener(
+    "click",
+    function () {
+
+        showScreen(
+            gameScreen
+        );
+
+    }
+);
+
+
+/* =========================================================
+   42. ADMIN
+========================================================= */
+
+adminButton.addEventListener(
+    "click",
+    async function () {
+
+        if (
+            !currentProfile ||
+            currentProfile.role !== "admin"
+        ) {
+
+            return;
+
+        }
+
+
+        showScreen(
+            adminScreen
+        );
+
+
+        await loadAdminUsers();
+
+    }
+);
+
+
+/* =========================================================
+   43. LOAD ADMIN USERS
+========================================================= */
+
+async function loadAdminUsers() {
+
+    adminBody.innerHTML = `
+        <tr>
+            <td colspan="6">
+                Đang tải...
+            </td>
+        </tr>
+    `;
+
+
+    if (!supabaseClient) return;
+
+
+    const {
+        data,
+        error
+    } =
+        await supabaseClient.rpc(
+            "admin_list_profiles"
+        );
+
+
+    if (error) {
+
+        console.error(
+            "Admin list error:",
+            error
+        );
+
+
+        adminBody.innerHTML = `
+            <tr>
+                <td colspan="6">
+                    Không có quyền hoặc RPC chưa được tạo.
+                </td>
+            </tr>
+        `;
+
+        return;
+
+    }
+
+
+    if (
+        !data ||
+        data.length === 0
+    ) {
+
+        adminBody.innerHTML = `
+            <tr>
+                <td colspan="6">
+                    Chưa có tài khoản.
+                </td>
+            </tr>
+        `;
+
+        return;
+
+    }
+
+
+    adminBody.innerHTML =
+        "";
+
+
+    data.forEach(
+        user => {
+
+            const row =
+                document.createElement(
+                    "tr"
+                );
+
+
+            /* USERNAME */
+
+            const usernameCell =
+                document.createElement(
+                    "td"
+                );
+
+            usernameCell.textContent =
+                user.username;
+
+
+            /* ROLE */
+
+            const roleCell =
+                document.createElement(
+                    "td"
+                );
+
+
+            const roleSelect =
+                document.createElement(
+                    "select"
+                );
+
+
+            roleSelect.className =
+                "admin-select";
+
+
+            [
+                "player",
+                "admin"
+            ].forEach(
+                role => {
+
+                    const option =
+                        document.createElement(
+                            "option"
+                        );
+
+
+                    option.value =
+                        role;
+
+
+                    option.textContent =
+                        role === "admin"
+                            ? "Admin"
+                            : "Player";
+
+
+                    if (
+                        user.role ===
+                        role
+                    ) {
+
+                        option.selected =
+                            true;
+
+                    }
+
+
+                    roleSelect.appendChild(
+                        option
+                    );
+
+                }
+            );
+
+
+            /* STATUS */
+
+            const statusCell =
+                document.createElement(
+                    "td"
+                );
+
+
+            const statusSelect =
+                document.createElement(
+                    "select"
+                );
+
+
+            statusSelect.className =
+                "admin-select";
+
+
+            const activeOption =
+                document.createElement(
+                    "option"
+                );
+
+
+            activeOption.value =
+                "true";
+
+            activeOption.textContent =
+                "Đang hoạt động";
+
+
+            const lockedOption =
+                document.createElement(
+                    "option"
+                );
+
+
+            lockedOption.value =
+                "false";
+
+            lockedOption.textContent =
+                "Đã khóa";
+
+
+            statusSelect.appendChild(
+                activeOption
+            );
+
+            statusSelect.appendChild(
+                lockedOption
+            );
+
+
+            statusSelect.value =
+                String(
+                    user.is_active
+                );
+
+
+            /* BEST SCORE */
+
+            const scoreCell =
+                document.createElement(
+                    "td"
+                );
+
+            scoreCell.textContent =
+                user.best_score || 0;
+
+
+            /* GAMES */
+
+            const gamesCell =
+                document.createElement(
+                    "td"
+                );
+
+            gamesCell.textContent =
+                user.total_games || 0;
+
+
+            /* ACTION */
+
+            const actionCell =
+                document.createElement(
+                    "td"
+                );
+
+
+            const saveButton =
+                document.createElement(
+                    "button"
+                );
+
+
+            saveButton.type =
+                "button";
+
+
+            saveButton.className =
+                "admin-save-button";
+
+
+            saveButton.textContent =
+                "Lưu";
+
+
+            saveButton.addEventListener(
+                "click",
+                async function () {
+
+                    await updateAdminUser(
+                        user.id,
+                        roleSelect.value,
+                        statusSelect.value === "true"
+                    );
+
+                }
+            );
+
+
+            actionCell.appendChild(
+                saveButton
+            );
+
+
+            row.appendChild(
+                usernameCell
+            );
+
+            row.appendChild(
+                roleCell
+            );
+
+            row.appendChild(
+                statusCell
+            );
+
+            row.appendChild(
+                scoreCell
+            );
+
+            row.appendChild(
+                gamesCell
+            );
+
+            row.appendChild(
+                actionCell
+            );
+
+
+            /*
+               KHÔNG CHO TỰ KHÓA
+            */
+
+            if (
+                user.id ===
+                currentUser.id
+            ) {
+
+                statusSelect.disabled =
+                    true;
+
+                roleSelect.disabled =
+                    true;
+
+                saveButton.disabled =
+                    true;
+
+            }
+
+
+            roleCell.appendChild(
+                roleSelect
+            );
+
+            statusCell.appendChild(
+                statusSelect
+            );
+
+
+            adminBody.appendChild(
+                row
+            );
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   44. UPDATE ADMIN USER
+========================================================= */
+
+async function updateAdminUser(
+    userId,
+    role,
+    isActive
+) {
+
+    adminMessage.textContent =
+        "Đang cập nhật...";
+
+
+    const {
+        error
+    } =
+        await supabaseClient.rpc(
+            "admin_update_profile",
+            {
+
+                target_user_id:
+                    userId,
+
+                new_role:
+                    role,
+
+                new_is_active:
+                    isActive
 
             }
         );
 
 
-    // =================================
-    // RESET GAME
-    // =================================
+    if (error) {
 
-    score =
-        0;
-
-
-    timeLeft =
-        GAME_DURATION;
+        console.error(
+            error
+        );
 
 
-    currentSpins =
-        0;
+        adminMessage.textContent =
+            "❌ Không thể cập nhật.";
+
+        return;
+
+    }
 
 
-    questionsAnswered =
-        0;
+    adminMessage.textContent =
+        "✅ Đã cập nhật tài khoản.";
 
 
-    questionActive =
-        false;
-
-
-    questionPool =
-        [];
-
-
-    questionIndex =
-        0;
-
-
-    gameRunning =
-        false;
-
-
-    gameEnded =
-        false;
-
-
-    wheelSpinning =
-        false;
-
-
-    // =================================
-    // RESET HIỆU ỨNG
-    // =================================
-
-    document.body.classList.remove(
-        "game-danger",
-        "game-critical"
-    );
-
-
-    timerElement.classList.remove(
-        "timer-warning",
-        "timer-critical"
-    );
-
-
-    gameScreen.classList.remove(
-        "critical-beat"
-    );
-
-
-    gameArea.classList.remove(
-        "music-beat",
-        "music-beat-danger"
-    );
-
-
-    // =================================
-    // UI
-    // =================================
-
-    updateUI();
-
-
-    // =================================
-    // RESET MÀN HÌNH
-    // =================================
-
-    wheelScreen.classList.add(
-        "hidden"
-    );
-
-
-    resultScreen.classList.add(
-        "hidden"
-    );
-
-
-    gameScreen.classList.remove(
-        "hidden"
-    );
-
-
-    // =================================
-    // RESET START SCREEN
-    // =================================
-
-    startMessage.style.display =
-        "block";
-
-
-    startButton.disabled =
-        false;
-
-
-    startButton.textContent =
-        "BẮT ĐẦU";
-
-
-    // =================================
-    // RESET VÒNG QUAY
-    // =================================
-
-    wheelRotation =
-        0;
-
-
-    wheel.style.transform =
-        "rotate(0deg)";
-
-
-    prizeResult.classList.add(
-        "hidden"
-    );
-
-
-    remainingSpinElement.textContent =
-        "0";
-
-
-    prizeText.textContent =
-        "";
-
-
-    updateSpinButton();
+    await loadAdminUsers();
 
 }
 
 
-// ================================
-// KHỞI TẠO BAN ĐẦU
-// ================================
+/* =========================================================
+   45. ADMIN BACK
+========================================================= */
 
-updateUI();
+adminBackButton.addEventListener(
+    "click",
+    function () {
 
-updateSpinButton();
+        showScreen(
+            gameScreen
+        );
+
+    }
+);
+
+
+/* =========================================================
+   46. LOGOUT
+========================================================= */
+
+logoutButton.addEventListener(
+    "click",
+    async function () {
+
+        stopGame();
+
+
+        if (supabaseClient) {
+
+            await supabaseClient.auth.signOut();
+
+        }
+
+
+        currentUser = null;
+
+        currentProfile = null;
+
+
+        loginForm.reset();
+
+        registerForm.reset();
+
+
+        showLogin();
+
+
+        showScreen(
+            authScreen
+        );
+
+    }
+);
+
+
+/* =========================================================
+   47. STOP GAME
+========================================================= */
+
+function stopGame() {
+
+    gameRunning = false;
+
+    questionActive = false;
+
+
+    clearInterval(
+        gameTimer
+    );
+
+    clearTimeout(
+        chickenTimer
+    );
+
+
+    gameTimer = null;
+
+    chickenTimer = null;
+
+
+    /*
+       DỪNG NHẠC
+    */
+
+    stopBackgroundMusic();
+
+
+    /*
+       XÓA GÀ
+    */
+
+    removeAllChickens();
+
+
+    /*
+       XÓA CÂU HỎI
+    */
+
+    document
+        .querySelectorAll(
+            ".question-overlay"
+        )
+        .forEach(
+            item =>
+                item.remove()
+        );
+
+}
+
+
+/* =========================================================
+   48. SUPABASE AUTH STATE
+========================================================= */
+
+async function initAuth() {
+
+    if (!supabaseClient) {
+
+        showScreen(
+            authScreen
+        );
+
+
+        showAuthMessage(
+            "Hãy điền SUPABASE_URL và SUPABASE_PUBLISHABLE_KEY trong script.js.",
+            "error"
+        );
+
+
+        return;
+
+    }
+
+
+    const {
+        data
+    } =
+        await supabaseClient.auth.getSession();
+
+
+    if (
+        data &&
+        data.session &&
+        data.session.user
+    ) {
+
+        currentUser =
+            data.session.user;
+
+
+        await loadCurrentUser();
+
+    } else {
+
+        showScreen(
+            authScreen
+        );
+
+    }
+
+
+    supabaseClient.auth.onAuthStateChange(
+        async (
+            event,
+            session
+        ) => {
+
+            if (
+                event ===
+                "SIGNED_OUT"
+            ) {
+
+                currentUser = null;
+
+                currentProfile = null;
+
+                stopGame();
+
+                showScreen(
+                    authScreen
+                );
+
+                return;
+
+            }
+
+
+            if (
+                session &&
+                session.user
+            ) {
+
+                currentUser =
+                    session.user;
+
+            }
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   49. START
+========================================================= */
+
+document.addEventListener(
+    "DOMContentLoaded",
+    function () {
+
+        initAuth();
+
+    }
+);
