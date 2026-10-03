@@ -1,33 +1,44 @@
 /* =========================================================
    CHƯỞNG GÀ - SCRIPT.JS
-   Supabase + Game + Leaderboard + Admin
+   SUPABASE + GAME + LEADERBOARD + ADMIN
 
-   AUDIO:
+   GAMEPLAY V2
+   ---------------------------------------------------------
+   - 60 giây
+   - Gà di chuyển
+   - Gà thường
+   - Gà con nhanh
+   - Gà vàng +2
+   - Combo
+   - Combo bonus
+   - Spawn tăng dần
+   - Frenzy 10 giây cuối
+   - Có thể xuất hiện nhiều gà
+   - Gà biến mất nếu không chưởng kịp
+   - Beat-based spawn
    - music.mp3
    - hit.mp3
-
-   GAME:
-   - 60 giây
-   - Gà tăng tốc theo thời gian
-   - Gà bám theo beat của nhạc
-   - Cuối game tăng tốc mạnh
 ========================================================= */
+
+
 /* =========================================================
    1. SUPABASE CONFIG
 ========================================================= */
 
 const SUPABASE_URL =
-    "https://qlrtgivtgvlnvkibqtej.supabase.co";
+    "GIU_NGUYEN_SUPABASE_URL_CUA_BAN";
 
 const SUPABASE_PUBLISHABLE_KEY =
-    "sb_publishable_7isDs5a45y__a6zPgKJjMQ_boGU73Uu";
+    "GIU_NGUYEN_SUPABASE_PUBLISHABLE_KEY_CUA_BAN";
+
 
 let supabaseClient = null;
 
+
 if (
     window.supabase &&
-    SUPABASE_URL !== "YOUR_SUPABASE_URL" &&
-    SUPABASE_PUBLISHABLE_KEY !== "YOUR_SUPABASE_PUBLISHABLE_KEY"
+    SUPABASE_URL !== "GIU_NGUYEN_SUPABASE_URL_CUA_BAN" &&
+    SUPABASE_PUBLISHABLE_KEY !== "GIU_NGUYEN_SUPABASE_PUBLISHABLE_KEY_CUA_BAN"
 ) {
 
     supabaseClient =
@@ -47,10 +58,7 @@ const GAME_DURATION = 60;
 
 
 /*
-   BPM của nhạc.
-
-   152 BPM
-   1 beat ≈ 394.7ms
+   Nhạc khoảng 152 BPM
 */
 const MUSIC_BPM = 152;
 
@@ -59,32 +67,61 @@ const BEAT_TIME =
 
 
 /*
-   Tốc độ gà theo beat:
-
-   Đầu:
-   2 beat / gà
-
-   15s:
-   ~1.6 beat / gà
-
-   30s:
-   ~1.2 beat / gà
-
-   45s:
-   ~0.8 beat / gà
-
-   Cuối:
-   0.5 beat / gà
+   Frenzy bắt đầu khi còn 10 giây
 */
+const FRENZY_TIME = 10;
 
 
-/* Thời gian gà tồn tại */
+/*
+   Số gà tối đa trên màn hình
+*/
+const MAX_CHICKENS_NORMAL = 3;
 
-const CHICKEN_LIFETIME_START =
-    2200;
+const MAX_CHICKENS_FRENZY = 7;
 
-const CHICKEN_LIFETIME_END =
-    650;
+
+/*
+   Thời gian tồn tại của gà
+*/
+const CHICKEN_LIFETIME_START = 2400;
+
+const CHICKEN_LIFETIME_END = 650;
+
+
+/*
+   Tốc độ di chuyển
+*/
+const CHICKEN_SPEED_START = 0.35;
+
+const CHICKEN_SPEED_END = 1.8;
+
+
+/*
+   Gà vàng
+*/
+const GOLDEN_CHICKEN_CHANCE = 0.10;
+
+
+/*
+   Gà con
+*/
+const BABY_CHICKEN_CHANCE = 0.28;
+
+
+/*
+   Combo bonus
+
+   Combo 3  -> +1
+   Combo 5  -> +2
+   Combo 8  -> +3
+   Combo 10 -> +5
+*/
+const COMBO_BONUS = {
+    3: 1,
+    5: 2,
+    8: 3,
+    10: 5
+};
 
 
 /* =========================================================
@@ -107,7 +144,9 @@ const adminScreen =
     document.getElementById("adminScreen");
 
 
-/* AUTH */
+/* =========================================================
+   AUTH DOM
+========================================================= */
 
 const loginTab =
     document.getElementById("loginTab");
@@ -142,7 +181,9 @@ const registerPassword2 =
     document.getElementById("registerPassword2");
 
 
-/* GAME */
+/* =========================================================
+   GAME DOM
+========================================================= */
 
 const gameArea =
     document.getElementById("gameArea");
@@ -169,7 +210,9 @@ const scoreSaveMessage =
     document.getElementById("scoreSaveMessage");
 
 
-/* ACCOUNT */
+/* =========================================================
+   ACCOUNT
+========================================================= */
 
 const currentUsername =
     document.getElementById("currentUsername");
@@ -189,7 +232,9 @@ const adminButton =
     document.getElementById("adminButton");
 
 
-/* LEADERBOARD */
+/* =========================================================
+   LEADERBOARD
+========================================================= */
 
 const leaderboardBody =
     document.getElementById("leaderboardBody");
@@ -200,7 +245,9 @@ const leaderboardBackButton =
     );
 
 
-/* ADMIN */
+/* =========================================================
+   ADMIN
+========================================================= */
 
 const adminBody =
     document.getElementById("adminBody");
@@ -225,13 +272,7 @@ let gameRunning = false;
 
 let gameTimer = null;
 
-
-/*
-   chickenTimer hiện tại là setTimeout
-   chứ không còn setInterval.
-*/
 let chickenTimer = null;
-
 
 let currentUser = null;
 
@@ -242,9 +283,44 @@ let questionActive = false;
 let gameEnded = false;
 
 
+/*
+   COMBO
+*/
+let combo = 0;
+
+
+/*
+   Tổng số gà đã spawn
+*/
+let chickenSpawnCount = 0;
+
+
+/*
+   Gà đang tồn tại
+*/
+let activeChickens = new Set();
+
+
+/*
+   ID để quản lý gà
+*/
+let chickenId = 0;
+
+
+/*
+   Timestamp bắt đầu game
+*/
+let gameStartTime = 0;
+
+
+/*
+   Dùng để tạo nhiều spawn trong Frenzy
+*/
+let frenzyTimer = null;
+
+
 /* =========================================================
    5. AUDIO
-   CHỈ DÙNG 2 FILE
 ========================================================= */
 
 const bgMusic =
@@ -354,182 +430,156 @@ const questionBank = [
     {
         question:
             "Thủ đô của Việt Nam là gì?",
-
         answers: [
             "TP. Hồ Chí Minh",
             "Hà Nội",
             "Đà Nẵng",
             "Huế"
         ],
-
         correct: 1
     },
 
     {
         question:
             "1 + 1 bằng bao nhiêu?",
-
         answers: [
             "1",
             "2",
             "3",
             "4"
         ],
-
         correct: 1
     },
 
     {
         question:
             "Con vật nào thường được gọi là 'chúa sơn lâm'?",
-
         answers: [
             "Voi",
             "Hổ",
             "Gà",
             "Khỉ"
         ],
-
         correct: 1
     },
 
     {
         question:
             "Nước nào có hình chữ S?",
-
         answers: [
             "Việt Nam",
             "Nhật Bản",
             "Hàn Quốc",
             "Thái Lan"
         ],
-
         correct: 0
     },
 
     {
         question:
             "Một tuần có bao nhiêu ngày?",
-
         answers: [
             "5",
             "6",
             "7",
             "8"
         ],
-
         correct: 2
     },
 
     {
         question:
             "Hành tinh nào gần Mặt Trời nhất?",
-
         answers: [
             "Trái Đất",
             "Sao Kim",
             "Sao Thủy",
             "Sao Hỏa"
         ],
-
         correct: 2
     },
 
     {
         question:
             "CPU là viết tắt của gì?",
-
         answers: [
             "Central Processing Unit",
             "Computer Personal Unit",
             "Central Program Utility",
             "Control Processing User"
         ],
-
         correct: 0
     },
 
     {
         question:
             "HTML chủ yếu dùng để làm gì?",
-
         answers: [
             "Xử lý ảnh",
             "Tạo cấu trúc trang web",
             "Chơi game",
             "Quản lý cơ sở dữ liệu"
         ],
-
         correct: 1
     },
 
     {
         question:
             "JavaScript thường được dùng để làm gì trên website?",
-
         answers: [
             "Tạo tương tác",
             "Thay thế HTML",
             "Tạo nguồn điện",
             "Nén hình ảnh"
         ],
-
         correct: 0
     },
 
     {
         question:
             "Con gà có mấy chân?",
-
         answers: [
             "1",
             "2",
             "3",
             "4"
         ],
-
         correct: 1
     },
 
     {
         question:
             "Mặt Trời mọc ở hướng nào?",
-
         answers: [
             "Đông",
             "Tây",
             "Nam",
             "Bắc"
         ],
-
         correct: 0
     },
 
     {
         question:
             "RGB gồm những màu nào?",
-
         answers: [
             "Đỏ, xanh lá, xanh dương",
             "Đỏ, vàng, trắng",
             "Đen, trắng, xám",
             "Cam, tím, hồng"
         ],
-
         correct: 0
     },
 
     {
         question:
             "Loài vật nào đẻ trứng?",
-
         answers: [
             "Gà",
             "Chó",
             "Mèo",
             "Bò"
         ],
-
         correct: 0
     }
 
@@ -550,7 +600,6 @@ function showScreen(screen) {
         adminScreen
     ];
 
-
     screens.forEach(item => {
 
         if (!item) return;
@@ -560,7 +609,6 @@ function showScreen(screen) {
         item.classList.remove("active");
 
     });
-
 
     if (screen) {
 
@@ -622,7 +670,6 @@ function showAuthMessage(
     authMessage.className =
         "auth-message";
 
-
     if (type) {
 
         authMessage.classList.add(
@@ -652,23 +699,13 @@ function clearAuthMessage() {
 
 function showLogin() {
 
-    loginTab.classList.add(
-        "active"
-    );
+    loginTab.classList.add("active");
 
-    registerTab.classList.remove(
-        "active"
-    );
+    registerTab.classList.remove("active");
 
+    loginForm.classList.remove("hidden");
 
-    loginForm.classList.remove(
-        "hidden"
-    );
-
-    registerForm.classList.add(
-        "hidden"
-    );
-
+    registerForm.classList.add("hidden");
 
     clearAuthMessage();
 
@@ -677,23 +714,13 @@ function showLogin() {
 
 function showRegister() {
 
-    registerTab.classList.add(
-        "active"
-    );
+    registerTab.classList.add("active");
 
-    loginTab.classList.remove(
-        "active"
-    );
+    loginTab.classList.remove("active");
 
+    registerForm.classList.remove("hidden");
 
-    registerForm.classList.remove(
-        "hidden"
-    );
-
-    loginForm.classList.add(
-        "hidden"
-    );
-
+    loginForm.classList.add("hidden");
 
     clearAuthMessage();
 
@@ -704,7 +731,6 @@ loginTab.addEventListener(
     "click",
     showLogin
 );
-
 
 registerTab.addEventListener(
     "click",
@@ -722,7 +748,6 @@ registerForm.addEventListener(
 
         event.preventDefault();
 
-
         if (!supabaseClient) {
 
             showAuthMessage(
@@ -733,7 +758,6 @@ registerForm.addEventListener(
             return;
 
         }
-
 
         const username =
             normalizeUsername(
@@ -746,7 +770,6 @@ registerForm.addEventListener(
         const password2 =
             registerPassword2.value;
 
-
         if (!validUsername(username)) {
 
             showAuthMessage(
@@ -757,7 +780,6 @@ registerForm.addEventListener(
             return;
 
         }
-
 
         if (password.length < 6) {
 
@@ -770,7 +792,6 @@ registerForm.addEventListener(
 
         }
 
-
         if (password !== password2) {
 
             showAuthMessage(
@@ -782,11 +803,9 @@ registerForm.addEventListener(
 
         }
 
-
         showAuthMessage(
             "Đang tạo tài khoản..."
         );
-
 
         try {
 
@@ -803,7 +822,6 @@ registerForm.addEventListener(
                     )
                     .maybeSingle();
 
-
             if (profileError) {
 
                 console.error(
@@ -811,7 +829,6 @@ registerForm.addEventListener(
                 );
 
             }
-
 
             if (existingProfile) {
 
@@ -824,12 +841,10 @@ registerForm.addEventListener(
 
             }
 
-
             const internalEmail =
                 usernameToInternalEmail(
                     username
                 );
-
 
             const {
                 data,
@@ -854,7 +869,6 @@ registerForm.addEventListener(
 
                 });
 
-
             if (error) {
 
                 console.error(error);
@@ -870,11 +884,10 @@ registerForm.addEventListener(
 
             }
 
-
             if (!data.session) {
 
                 showAuthMessage(
-                    "Tạo tài khoản thành công. Hãy kiểm tra cấu hình Email Confirmation trong Supabase.",
+                    "Tạo tài khoản thành công.",
                     "success"
                 );
 
@@ -882,15 +895,12 @@ registerForm.addEventListener(
 
             }
 
-
             showAuthMessage(
                 "Tạo tài khoản thành công!",
                 "success"
             );
 
-
             await loadCurrentUser();
-
 
         } catch (error) {
 
@@ -917,7 +927,6 @@ loginForm.addEventListener(
 
         event.preventDefault();
 
-
         if (!supabaseClient) {
 
             showAuthMessage(
@@ -929,7 +938,6 @@ loginForm.addEventListener(
 
         }
 
-
         const username =
             normalizeUsername(
                 loginUsername.value
@@ -937,7 +945,6 @@ loginForm.addEventListener(
 
         const password =
             loginPassword.value;
-
 
         if (!validUsername(username)) {
 
@@ -950,7 +957,6 @@ loginForm.addEventListener(
 
         }
 
-
         if (!password) {
 
             showAuthMessage(
@@ -962,11 +968,9 @@ loginForm.addEventListener(
 
         }
 
-
         showAuthMessage(
             "Đang đăng nhập..."
         );
-
 
         try {
 
@@ -974,7 +978,6 @@ loginForm.addEventListener(
                 usernameToInternalEmail(
                     username
                 );
-
 
             const {
                 data,
@@ -990,7 +993,6 @@ loginForm.addEventListener(
 
                 });
 
-
             if (error) {
 
                 console.error(error);
@@ -1004,13 +1006,10 @@ loginForm.addEventListener(
 
             }
 
-
             currentUser =
                 data.user;
 
-
             await loadCurrentUser();
-
 
         } catch (error) {
 
@@ -1037,7 +1036,6 @@ function translateAuthError(message) {
         String(message || "")
             .toLowerCase();
 
-
     if (
         text.includes(
             "already registered"
@@ -1048,7 +1046,6 @@ function translateAuthError(message) {
 
     }
 
-
     if (
         text.includes("password")
     ) {
@@ -1057,7 +1054,6 @@ function translateAuthError(message) {
 
     }
 
-
     if (
         text.includes("invalid")
     ) {
@@ -1065,7 +1061,6 @@ function translateAuthError(message) {
         return "Thông tin tài khoản không hợp lệ.";
 
     }
-
 
     return "Có lỗi xảy ra. Vui lòng thử lại.";
 
@@ -1080,13 +1075,11 @@ async function loadCurrentUser() {
 
     if (!supabaseClient) return;
 
-
     const {
         data,
         error
     } =
         await supabaseClient.auth.getUser();
-
 
     if (
         error ||
@@ -1103,20 +1096,16 @@ async function loadCurrentUser() {
 
     }
 
-
     currentUser =
         data.user;
 
-
     await loadProfile();
-
 
     if (!currentProfile) {
 
         await createMissingProfile();
 
     }
-
 
     if (!currentProfile) {
 
@@ -1132,7 +1121,6 @@ async function loadCurrentUser() {
         return;
 
     }
-
 
     if (
         currentProfile.is_active === false
@@ -1153,9 +1141,7 @@ async function loadCurrentUser() {
 
     }
 
-
     updateAccountUI();
-
 
     showScreen(
         gameScreen
@@ -1172,7 +1158,6 @@ async function loadProfile() {
 
     currentProfile = null;
 
-
     const {
         data,
         error
@@ -1188,7 +1173,6 @@ async function loadProfile() {
             )
             .maybeSingle();
 
-
     if (error) {
 
         console.error(
@@ -1199,7 +1183,6 @@ async function loadProfile() {
         return;
 
     }
-
 
     currentProfile =
         data;
@@ -1215,15 +1198,10 @@ async function createMissingProfile() {
 
     const username =
         normalizeUsername(
-
-            currentUser.user_metadata?.username
-            ||
-            currentUser.email?.split("@")[0]
-            ||
+            currentUser.user_metadata?.username ||
+            currentUser.email?.split("@")[0] ||
             "player"
-
         );
-
 
     const {
         data,
@@ -1255,7 +1233,6 @@ async function createMissingProfile() {
             .select()
             .single();
 
-
     if (error) {
 
         console.error(
@@ -1266,7 +1243,6 @@ async function createMissingProfile() {
         return;
 
     }
-
 
     currentProfile =
         data;
@@ -1282,10 +1258,8 @@ function updateAccountUI() {
 
     if (!currentProfile) return;
 
-
     currentUsername.textContent =
         currentProfile.username;
-
 
     if (
         currentProfile.role === "admin"
@@ -1320,11 +1294,16 @@ function startGame() {
 
     if (gameRunning) return;
 
-
     score = 0;
 
     timeLeft =
         GAME_DURATION;
+
+    combo = 0;
+
+    chickenSpawnCount = 0;
+
+    activeChickens.clear();
 
     gameRunning = true;
 
@@ -1332,26 +1311,22 @@ function startGame() {
 
     questionActive = false;
 
-
-    /* ÂM NHẠC */
+    gameStartTime =
+        Date.now();
 
     startBackgroundMusic();
 
-
     scoreElement.textContent =
-        score;
+        "0";
 
     timerElement.textContent =
-        timeLeft;
-
+        GAME_DURATION;
 
     startMessage.classList.add(
         "hidden"
     );
 
-
     removeAllChickens();
-
 
     clearInterval(
         gameTimer
@@ -1361,8 +1336,14 @@ function startGame() {
         chickenTimer
     );
 
+    clearTimeout(
+        frenzyTimer
+    );
 
-    /* GAME TIMER */
+
+    /*
+       GAME TIMER
+    */
 
     gameTimer =
         setInterval(
@@ -1372,14 +1353,14 @@ function startGame() {
 
 
     /*
-       Spawn con đầu tiên ngay lập tức
+       GÀ ĐẦU TIÊN
     */
 
     spawnChicken();
 
 
     /*
-       Sau đó bắt đầu chạy theo beat
+       Lập lịch spawn
     */
 
     scheduleNextChicken();
@@ -1395,11 +1376,23 @@ function gameTick() {
 
     if (!gameRunning) return;
 
-
     timeLeft--;
 
     timerElement.textContent =
         timeLeft;
+
+
+    /*
+       10 GIÂY CUỐI
+    */
+
+    if (
+        timeLeft === FRENZY_TIME
+    ) {
+
+        activateFrenzy();
+
+    }
 
 
     if (timeLeft <= 0) {
@@ -1412,7 +1405,7 @@ function gameTick() {
 
 
 /* =========================================================
-   21. GAME PROGRESS
+   21. PROGRESS
 ========================================================= */
 
 function getGameProgress() {
@@ -1420,7 +1413,6 @@ function getGameProgress() {
     const elapsed =
         GAME_DURATION -
         timeLeft;
-
 
     return Math.min(
         1,
@@ -1434,119 +1426,150 @@ function getGameProgress() {
 
 
 /* =========================================================
-   22. CHICKEN SPEED
+   22. FRENZY CHECK
 ========================================================= */
 
-function getChickenBeatMultiplier() {
+function isFrenzy() {
 
-    const progress =
-        getGameProgress();
-
-
-    /*
-       0s
-       2.0 beat / gà
-
-       15s
-       ~1.65 beat / gà
-
-       30s
-       ~1.25 beat / gà
-
-       45s
-       ~0.8 beat / gà
-
-       60s
-       0.5 beat / gà
-    */
-
-
-    if (progress < 0.15) {
-
-        return 2.0;
-
-    }
-
-
-    if (progress < 0.35) {
-
-        return 1.65;
-
-    }
-
-
-    if (progress < 0.55) {
-
-        return 1.3;
-
-    }
-
-
-    if (progress < 0.75) {
-
-        return 0.9;
-
-    }
-
-
-    return 0.5;
-
-}
-
-
-/* =========================================================
-   23. GET CHICKEN SPAWN TIME
-========================================================= */
-
-function getChickenSpawnTime() {
-
-    const multiplier =
-        getChickenBeatMultiplier();
-
-
-    let delay =
-        BEAT_TIME *
-        multiplier;
-
-
-    /*
-       Không cho vượt quá 1 giây
-    */
-
-    delay =
-        Math.min(
-            1000,
-            delay
-        );
-
-
-    /*
-       Cuối game không xuống quá thấp
-       để trình duyệt không bị spam DOM.
-    */
-
-    delay =
-        Math.max(
-            180,
-            delay
-        );
-
-
-    return Math.round(
-        delay
+    return (
+        timeLeft <= FRENZY_TIME &&
+        gameRunning
     );
 
 }
 
 
 /* =========================================================
-   24. SCHEDULE NEXT CHICKEN
+   23. CHICKEN SPAWN SPEED
+========================================================= */
+
+function getChickenSpawnTime() {
+
+    const progress =
+        getGameProgress();
+
+
+    /*
+       Đầu game:
+       ~ 790ms
+
+       15s:
+       ~ 630ms
+
+       30s:
+       ~ 470ms
+
+       45s:
+       ~ 315ms
+
+       Cuối:
+       ~ 180ms
+    */
+
+    let multiplier;
+
+
+    if (progress < 0.15) {
+
+        multiplier = 2.0;
+
+    }
+    else if (progress < 0.35) {
+
+        multiplier = 1.6;
+
+    }
+    else if (progress < 0.55) {
+
+        multiplier = 1.2;
+
+    }
+    else if (progress < 0.75) {
+
+        multiplier = 0.8;
+
+    }
+    else {
+
+        multiplier = 0.45;
+
+    }
+
+
+    let delay =
+        BEAT_TIME * multiplier;
+
+
+    /*
+       Frenzy
+    */
+
+    if (isFrenzy()) {
+
+        delay *= 0.72;
+
+    }
+
+
+    return Math.round(
+        Math.max(
+            180,
+            Math.min(
+                850,
+                delay
+            )
+        )
+    );
+
+}
+
+
+/* =========================================================
+   24. MAX CHICKENS
+========================================================= */
+
+function getMaxChickens() {
+
+    if (isFrenzy()) {
+
+        return MAX_CHICKENS_FRENZY;
+
+    }
+
+    const progress =
+        getGameProgress();
+
+
+    if (progress < 0.25) {
+
+        return 2;
+
+    }
+
+    if (progress < 0.50) {
+
+        return 3;
+
+    }
+
+    if (progress < 0.75) {
+
+        return 4;
+
+    }
+
+    return 5;
+
+}
+
+
+/* =========================================================
+   25. SCHEDULE NEXT CHICKEN
 ========================================================= */
 
 function scheduleNextChicken() {
 
     if (!gameRunning) return;
-
 
     clearTimeout(
         chickenTimer
@@ -1566,21 +1589,15 @@ function scheduleNextChicken() {
                 }
 
 
-                /*
-                   Nếu đang trả lời câu hỏi
-                   thì không spawn con mới.
-                */
-
-                if (!questionActive) {
+                if (
+                    activeChickens.size <
+                    getMaxChickens()
+                ) {
 
                     spawnChicken();
 
                 }
 
-
-                /*
-                   Lập lịch tiếp theo.
-                */
 
                 scheduleNextChicken();
 
@@ -1592,36 +1609,70 @@ function scheduleNextChicken() {
 
 
 /* =========================================================
-   25. CHICKEN LIFETIME
+   26. FRENZY MODE
 ========================================================= */
 
-function getChickenLifetime() {
+function activateFrenzy() {
+
+    if (!gameRunning) return;
+
+
+    showGameMessage(
+        "🔥 FRENZY MODE!",
+        "frenzy"
+    );
+
+
+    /*
+       Spawn một đợt gà ngay lập tức
+    */
+
+    for (
+        let i = 0;
+        i < 3;
+        i++
+    ) {
+
+        setTimeout(
+            () => {
+
+                if (
+                    gameRunning &&
+                    activeChickens.size <
+                    MAX_CHICKENS_FRENZY
+                ) {
+
+                    spawnChicken();
+
+                }
+
+            },
+            i * 160
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   27. CHICKEN LIFETIME
+========================================================= */
+
+function getChickenLifetime(type) {
 
     const progress =
         getGameProgress();
 
 
-    /*
-       Tăng tốc theo đường cong.
-
-       Đầu game:
-       ~2200ms
-
-       Giữa:
-       ~1400ms
-
-       Cuối:
-       ~650ms
-    */
-
     const curve =
         Math.pow(
             progress,
-            1.45
+            1.35
         );
 
 
-    const lifetime =
+    let lifetime =
         CHICKEN_LIFETIME_START -
         (
             CHICKEN_LIFETIME_START -
@@ -1630,15 +1681,125 @@ function getChickenLifetime() {
         curve;
 
 
+    /*
+       Gà con sống ngắn hơn
+    */
+
+    if (
+        type === "baby"
+    ) {
+
+        lifetime *= 0.68;
+
+    }
+
+
+    /*
+       Gà vàng tồn tại lâu hơn một chút
+    */
+
+    if (
+        type === "golden"
+    ) {
+
+        lifetime *= 1.12;
+
+    }
+
+
     return Math.round(
-        lifetime
+        Math.max(
+            450,
+            lifetime
+        )
     );
 
 }
 
 
 /* =========================================================
-   26. SPAWN CHICKEN
+   28. CHICKEN TYPE
+========================================================= */
+
+function getChickenType() {
+
+    const random =
+        Math.random();
+
+
+    if (
+        random <
+        GOLDEN_CHICKEN_CHANCE
+    ) {
+
+        return "golden";
+
+    }
+
+
+    if (
+        random <
+        GOLDEN_CHICKEN_CHANCE +
+        BABY_CHICKEN_CHANCE
+    ) {
+
+        return "baby";
+
+    }
+
+
+    return "normal";
+
+}
+
+
+/* =========================================================
+   29. CHICKEN SPEED
+========================================================= */
+
+function getChickenSpeed(type) {
+
+    const progress =
+        getGameProgress();
+
+
+    const base =
+        CHICKEN_SPEED_START +
+        (
+            CHICKEN_SPEED_END -
+            CHICKEN_SPEED_START
+        ) *
+        Math.pow(
+            progress,
+            1.2
+        );
+
+
+    if (
+        type === "baby"
+    ) {
+
+        return base * 1.65;
+
+    }
+
+
+    if (
+        type === "golden"
+    ) {
+
+        return base * 0.9;
+
+    }
+
+
+    return base;
+
+}
+
+
+/* =========================================================
+   30. SPAWN CHICKEN
 ========================================================= */
 
 function spawnChicken() {
@@ -1646,6 +1807,20 @@ function spawnChicken() {
     if (!gameRunning) return;
 
     if (questionActive) return;
+
+
+    if (
+        activeChickens.size >=
+        getMaxChickens()
+    ) {
+
+        return;
+
+    }
+
+
+    const type =
+        getChickenType();
 
 
     const chicken =
@@ -1659,13 +1834,84 @@ function spawnChicken() {
 
 
     /*
-       Gà thường nhiều hơn gà con
+       Class gameplay
     */
 
-    chicken.textContent =
-        Math.random() > 0.25
-            ? "🐔"
-            : "🐥";
+    chicken.classList.add(
+        `chicken-${type}`
+    );
+
+
+    /*
+       ID
+    */
+
+    const id =
+        ++chickenId;
+
+
+    chicken.dataset.chickenId =
+        String(id);
+
+
+    chicken.dataset.type =
+        type;
+
+
+    /*
+       Emoji
+    */
+
+    if (
+        type === "golden"
+    ) {
+
+        chicken.textContent =
+            "🐔";
+
+    }
+    else if (
+        type === "baby"
+    ) {
+
+        chicken.textContent =
+            "🐥";
+
+    }
+    else {
+
+        chicken.textContent =
+            "🐔";
+
+    }
+
+
+    /*
+       Kích thước
+    */
+
+    if (
+        type === "golden"
+    ) {
+
+        chicken.style.fontSize =
+            "64px";
+
+    }
+    else if (
+        type === "baby"
+    ) {
+
+        chicken.style.fontSize =
+            "44px";
+
+    }
+    else {
+
+        chicken.style.fontSize =
+            "56px";
+
+    }
 
 
     const areaWidth =
@@ -1675,21 +1921,21 @@ function spawnChicken() {
         gameArea.clientHeight;
 
 
-    const minX = 25;
+    const minX = 30;
 
     const maxX =
         Math.max(
             minX,
-            areaWidth - 90
+            areaWidth - 100
         );
 
 
-    const minY = 100;
+    const minY = 110;
 
     const maxY =
         Math.max(
             minY,
-            areaHeight - 130
+            areaHeight - 150
         );
 
 
@@ -1715,7 +1961,57 @@ function spawnChicken() {
 
 
     /*
-       CLICK GÀ
+       Random hướng
+    */
+
+    const direction =
+        Math.random() > 0.5
+            ? 1
+            : -1;
+
+
+    const speed =
+        getChickenSpeed(
+            type
+        );
+
+
+    const angle =
+        randomNumber(
+            -30,
+            30
+        );
+
+
+    chicken.dataset.dx =
+        String(
+            direction *
+            speed
+        );
+
+
+    chicken.dataset.dy =
+        String(
+            Math.sin(
+                angle *
+                Math.PI /
+                180
+            ) *
+            speed
+        );
+
+
+    chicken.dataset.rotation =
+        String(
+            randomNumber(
+                -8,
+                8
+            )
+        );
+
+
+    /*
+       CLICK
     */
 
     chicken.addEventListener(
@@ -1737,36 +2033,241 @@ function spawnChicken() {
     );
 
 
+    activeChickens.add(
+        chicken
+    );
+
+
+    chickenSpawnCount++;
+
+
     /*
-       Gà tự biến mất.
-       Cuối game biến mất nhanh hơn.
+       Animation movement
+    */
+
+    animateChicken(
+        chicken
+    );
+
+
+    /*
+       Lifetime
     */
 
     const lifetime =
-        getChickenLifetime();
+        getChickenLifetime(
+            type
+        );
 
 
-    setTimeout(
+    const deathTimer =
+        setTimeout(
+            () => {
+
+                if (
+                    chicken &&
+                    chicken.parentNode
+                ) {
+
+                    chicken.classList.add(
+                        "chicken-fade"
+                    );
+
+
+                    setTimeout(
+                        () => {
+
+                            if (
+                                chicken &&
+                                chicken.parentNode
+                            ) {
+
+                                chicken.remove();
+
+                            }
+
+                            activeChickens.delete(
+                                chicken
+                            );
+
+                        },
+                        150
+                    );
+
+                }
+
+            },
+            lifetime
+        );
+
+
+    chicken._deathTimer =
+        deathTimer;
+
+}
+
+
+/* =========================================================
+   31. CHICKEN MOVEMENT
+========================================================= */
+
+function animateChicken(
+    chicken
+) {
+
+    if (
+        !chicken ||
+        !chicken.parentNode ||
+        !gameRunning
+    ) {
+
+        return;
+
+    }
+
+
+    let x =
+        parseFloat(
+            chicken.style.left
+        ) || 0;
+
+
+    let y =
+        parseFloat(
+            chicken.style.top
+        ) || 0;
+
+
+    let dx =
+        parseFloat(
+            chicken.dataset.dx
+        ) || 0;
+
+
+    let dy =
+        parseFloat(
+            chicken.dataset.dy
+        ) || 0;
+
+
+    const width =
+        gameArea.clientWidth;
+
+    const height =
+        gameArea.clientHeight;
+
+
+    x += dx;
+
+    y += dy;
+
+
+    /*
+       Bounce ngang
+    */
+
+    if (
+        x <= 20
+    ) {
+
+        x = 20;
+
+        dx =
+            Math.abs(dx);
+
+        chicken.dataset.dx =
+            String(dx);
+
+    }
+
+
+    if (
+        x >= width - 100
+    ) {
+
+        x =
+            width - 100;
+
+        dx =
+            -Math.abs(dx);
+
+        chicken.dataset.dx =
+            String(dx);
+
+    }
+
+
+    /*
+       Bounce dọc
+    */
+
+    if (
+        y <= 95
+    ) {
+
+        y = 95;
+
+        dy =
+            Math.abs(dy);
+
+        chicken.dataset.dy =
+            String(dy);
+
+    }
+
+
+    if (
+        y >= height - 145
+    ) {
+
+        y =
+            height - 145;
+
+        dy =
+            -Math.abs(dy);
+
+        chicken.dataset.dy =
+            String(dy);
+
+    }
+
+
+    chicken.style.left =
+        `${x}px`;
+
+    chicken.style.top =
+        `${y}px`;
+
+
+    /*
+       Flip theo hướng
+    */
+
+    const direction =
+        dx >= 0
+            ? 1
+            : -1;
+
+
+    chicken.style.transform =
+        `scaleX(${direction})`;
+
+
+    requestAnimationFrame(
         () => {
 
-            if (
-                chicken &&
-                chicken.parentNode
-            ) {
+            animateChicken(
+                chicken
+            );
 
-                chicken.remove();
-
-            }
-
-        },
-        lifetime
+        }
     );
 
 }
 
 
 /* =========================================================
-   27. RANDOM
+   32. RANDOM
 ========================================================= */
 
 function randomNumber(
@@ -1783,27 +2284,53 @@ function randomNumber(
 
 
 /* =========================================================
-   28. REMOVE CHICKENS
+   33. REMOVE ALL CHICKENS
 ========================================================= */
 
 function removeAllChickens() {
 
-    const chickens =
-        gameArea.querySelectorAll(
-            ".chicken"
-        );
+    activeChickens.forEach(
+        chicken => {
 
+            if (
+                chicken._deathTimer
+            ) {
 
-    chickens.forEach(
-        chicken =>
-            chicken.remove()
+                clearTimeout(
+                    chicken._deathTimer
+                );
+
+            }
+
+            if (
+                chicken.parentNode
+            ) {
+
+                chicken.remove();
+
+            }
+
+        }
     );
+
+
+    activeChickens.clear();
+
+
+    gameArea
+        .querySelectorAll(
+            ".chicken"
+        )
+        .forEach(
+            chicken =>
+                chicken.remove()
+        );
 
 }
 
 
 /* =========================================================
-   29. HIT CHICKEN
+   34. HIT CHICKEN
 ========================================================= */
 
 function hitChicken(
@@ -1815,69 +2342,87 @@ function hitChicken(
     if (questionActive) return;
 
 
-    questionActive = true;
+    if (
+        !chicken ||
+        !chicken.parentNode
+    ) {
 
-
-    /*
-       VỊ TRÍ HIT
-    */
-
-    let hitX = 50;
-
-    let hitY = 50;
-
-
-    if (chicken) {
-
-        hitX =
-            chicken.offsetLeft +
-            chicken.offsetWidth / 2;
-
-        hitY =
-            chicken.offsetTop +
-            chicken.offsetHeight / 2;
+        return;
 
     }
 
 
+    questionActive = true;
+
+
+    const type =
+        chicken.dataset.type ||
+        "normal";
+
+
+    let hitX =
+        chicken.offsetLeft +
+        chicken.offsetWidth / 2;
+
+
+    let hitY =
+        chicken.offsetTop +
+        chicken.offsetHeight / 2;
+
+
     /*
-       HIT SOUND
+       ÂM THANH
     */
 
     playHitSound();
 
 
     /*
-       GÀ BỊ ĐÁNH
+       COMBO chưa tăng ở đây.
+       Chỉ tăng khi trả lời đúng.
     */
 
+
+    /*
+       Hiệu ứng gà
+    */
+
+    chicken.classList.add(
+        "hit"
+    );
+
+
+    activeChickens.delete(
+        chicken
+    );
+
+
     if (
-        chicken &&
-        chicken.parentNode
+        chicken._deathTimer
     ) {
 
-        chicken.classList.add(
-            "hit"
-        );
-
-
-        setTimeout(
-            () => {
-
-                if (
-                    chicken &&
-                    chicken.parentNode
-                ) {
-
-                    chicken.remove();
-
-                }
-
-            },
-            250
+        clearTimeout(
+            chicken._deathTimer
         );
 
     }
+
+
+    setTimeout(
+        () => {
+
+            if (
+                chicken &&
+                chicken.parentNode
+            ) {
+
+                chicken.remove();
+
+            }
+
+        },
+        250
+    );
 
 
     /*
@@ -1909,7 +2454,9 @@ function hitChicken(
 
             if (!gameRunning) return;
 
-            showQuestion();
+            showQuestion(
+                type
+            );
 
         },
         180
@@ -1919,7 +2466,7 @@ function hitChicken(
 
 
 /* =========================================================
-   30. HIT HAND EFFECT
+   35. HIT HAND
 ========================================================= */
 
 function showHitEffect(
@@ -1952,7 +2499,8 @@ function showHitEffect(
         hand.style.top =
             `${y - 45}px`;
 
-    } else {
+    }
+    else {
 
         hand.style.left =
             `${randomNumber(
@@ -1994,7 +2542,7 @@ function showHitEffect(
 
 
 /* =========================================================
-   31. HIT EXPLOSION
+   36. HIT EXPLOSION
 ========================================================= */
 
 function createHitExplosion(
@@ -2025,12 +2573,12 @@ function createHitExplosion(
 
 
     /*
-       12 PARTICLES
+       Particle nhiều hơn
     */
 
     for (
         let i = 0;
-        i < 12;
+        i < 16;
         i++
     ) {
 
@@ -2062,7 +2610,7 @@ function createHitExplosion(
 
 
 /* =========================================================
-   32. HIT PARTICLE
+   37. HIT PARTICLE
 ========================================================= */
 
 function createHitParticle(
@@ -2096,7 +2644,7 @@ function createHitParticle(
     const distance =
         randomNumber(
             45,
-            100
+            120
         );
 
 
@@ -2147,10 +2695,12 @@ function createHitParticle(
 
 
 /* =========================================================
-   33. QUESTION
+   38. QUESTION
 ========================================================= */
 
-function showQuestion() {
+function showQuestion(
+    chickenType = "normal"
+) {
 
     const question =
         questionBank[
@@ -2181,14 +2731,42 @@ function showQuestion() {
         "question-modal";
 
 
+    /*
+       Tiêu đề đặc biệt cho gà vàng
+    */
+
     const title =
         document.createElement(
             "h2"
         );
 
 
-    title.textContent =
-        "🐔 CÂU HỎI";
+    if (
+        chickenType === "golden"
+    ) {
+
+        title.textContent =
+            "🌟 GÀ VÀNG! +2 ĐIỂM";
+
+        title.classList.add(
+            "golden-question"
+        );
+
+    }
+    else if (
+        chickenType === "baby"
+    ) {
+
+        title.textContent =
+            "⚡ GÀ CON SIÊU NHANH!";
+
+    }
+    else {
+
+        title.textContent =
+            "🐔 CÂU HỎI";
+
+    }
 
 
     const questionText =
@@ -2216,7 +2794,10 @@ function showQuestion() {
 
 
     question.answers.forEach(
-        (answer, index) => {
+        (
+            answer,
+            index
+        ) => {
 
             const button =
                 document.createElement(
@@ -2245,7 +2826,8 @@ function showQuestion() {
                     answerQuestion(
                         index,
                         question.correct,
-                        overlay
+                        overlay,
+                        chickenType
                     );
 
                 }
@@ -2286,13 +2868,14 @@ function showQuestion() {
 
 
 /* =========================================================
-   34. ANSWER
+   39. ANSWER
 ========================================================= */
 
 function answerQuestion(
     selected,
     correct,
-    overlay
+    overlay,
+    chickenType
 ) {
 
     const buttons =
@@ -2315,7 +2898,61 @@ function answerQuestion(
         selected === correct
     ) {
 
-        score++;
+        /*
+           COMBO TĂNG
+        */
+
+        combo++;
+
+
+        /*
+           Điểm cơ bản
+        */
+
+        let points =
+            chickenType === "golden"
+                ? 2
+                : 1;
+
+
+        /*
+           Combo bonus
+        */
+
+        let comboBonus = 0;
+
+
+        if (
+            COMBO_BONUS[combo]
+        ) {
+
+            comboBonus =
+                COMBO_BONUS[combo];
+
+        }
+
+
+        /*
+           Cứ combo cao thì có bonus
+        */
+
+        if (
+            combo >= 10 &&
+            combo % 5 === 0
+        ) {
+
+            comboBonus += 3;
+
+        }
+
+
+        const totalPoints =
+            points +
+            comboBonus;
+
+
+        score +=
+            totalPoints;
 
 
         scoreElement.textContent =
@@ -2328,13 +2965,51 @@ function answerQuestion(
             );
 
 
-        showAnswerResult(
-            overlay,
-            true
+        showScorePopup(
+            `+${totalPoints}`,
+            chickenType === "golden"
+                ? "gold"
+                : "normal"
         );
 
 
-    } else {
+        if (
+            comboBonus > 0
+        ) {
+
+            showGameMessage(
+                `🔥 COMBO x${combo}  +${comboBonus} BONUS`,
+                "combo"
+            );
+
+        }
+        else if (
+            combo >= 3
+        ) {
+
+            showGameMessage(
+                `🔥 COMBO x${combo}`,
+                "combo"
+            );
+
+        }
+
+
+        showAnswerResult(
+            overlay,
+            true,
+            totalPoints
+        );
+
+    }
+    else {
+
+        /*
+           SAI = RESET COMBO
+        */
+
+        combo = 0;
+
 
         buttons[selected]
             ?.classList.add(
@@ -2348,9 +3023,16 @@ function answerQuestion(
             );
 
 
+        showGameMessage(
+            "💔 COMBO ĐÃ RESET",
+            "wrong"
+        );
+
+
         showAnswerResult(
             overlay,
-            false
+            false,
+            0
         );
 
     }
@@ -2359,12 +3041,154 @@ function answerQuestion(
 
 
 /* =========================================================
-   35. ANSWER RESULT
+   40. SCORE POPUP
+========================================================= */
+
+function showScorePopup(
+    text,
+    type = "normal"
+) {
+
+    const popup =
+        document.createElement(
+            "div"
+        );
+
+
+    popup.className =
+        "score-popup";
+
+
+    if (
+        type === "gold"
+    ) {
+
+        popup.classList.add(
+            "gold-score"
+        );
+
+    }
+
+
+    popup.textContent =
+        text;
+
+
+    const x =
+        randomNumber(
+            35,
+            Math.max(
+                35,
+                gameArea.clientWidth - 100
+            )
+        );
+
+
+    const y =
+        randomNumber(
+            130,
+            Math.max(
+                130,
+                gameArea.clientHeight - 180
+            )
+        );
+
+
+    popup.style.left =
+        `${x}px`;
+
+    popup.style.top =
+        `${y}px`;
+
+
+    gameArea.appendChild(
+        popup
+    );
+
+
+    setTimeout(
+        () => {
+
+            if (
+                popup &&
+                popup.parentNode
+            ) {
+
+                popup.remove();
+
+            }
+
+        },
+        900
+    );
+
+}
+
+
+/* =========================================================
+   41. GAME MESSAGE
+========================================================= */
+
+function showGameMessage(
+    text,
+    type = ""
+) {
+
+    const message =
+        document.createElement(
+            "div"
+        );
+
+
+    message.className =
+        "game-message";
+
+
+    if (type) {
+
+        message.classList.add(
+            type
+        );
+
+    }
+
+
+    message.textContent =
+        text;
+
+
+    gameArea.appendChild(
+        message
+    );
+
+
+    setTimeout(
+        () => {
+
+            if (
+                message &&
+                message.parentNode
+            ) {
+
+                message.remove();
+
+            }
+
+        },
+        1100
+    );
+
+}
+
+
+/* =========================================================
+   42. ANSWER RESULT
 ========================================================= */
 
 function showAnswerResult(
     overlay,
-    correct
+    correct,
+    points
 ) {
 
     const result =
@@ -2379,10 +3203,18 @@ function showAnswerResult(
             : "answer-result wrong-result";
 
 
-    result.textContent =
-        correct
-            ? "🎉 Chính xác! +1 điểm"
-            : "❌ Sai rồi!";
+    if (correct) {
+
+        result.textContent =
+            `🎉 Chính xác! +${points} điểm`;
+
+    }
+    else {
+
+        result.textContent =
+            "❌ Sai rồi! Combo bị reset";
+
+    }
 
 
     overlay
@@ -2411,11 +3243,6 @@ function showAnswerResult(
                 false;
 
 
-            /*
-               Sau khi trả lời xong,
-               tiếp tục chuỗi spawn theo beat.
-            */
-
             if (gameRunning) {
 
                 scheduleNextChicken();
@@ -2423,14 +3250,14 @@ function showAnswerResult(
             }
 
         },
-        850
+        750
     );
 
 }
 
 
 /* =========================================================
-   36. END GAME
+   43. END GAME
 ========================================================= */
 
 async function endGame() {
@@ -2453,29 +3280,23 @@ async function endGame() {
         chickenTimer
     );
 
+    clearTimeout(
+        frenzyTimer
+    );
+
 
     gameTimer = null;
 
     chickenTimer = null;
 
+    frenzyTimer = null;
 
-    /*
-       DỪNG NHẠC
-    */
 
     stopBackgroundMusic();
 
 
-    /*
-       XÓA GÀ
-    */
-
     removeAllChickens();
 
-
-    /*
-       XÓA CÂU HỎI
-    */
 
     document
         .querySelectorAll(
@@ -2504,7 +3325,7 @@ async function endGame() {
 
 
 /* =========================================================
-   37. SAVE SCORE
+   44. SAVE SCORE
 ========================================================= */
 
 async function saveScore(
@@ -2609,7 +3430,7 @@ async function saveScore(
 
 
 /* =========================================================
-   38. PLAY AGAIN
+   45. PLAY AGAIN
 ========================================================= */
 
 playAgainButton.addEventListener(
@@ -2633,12 +3454,20 @@ playAgainButton.addEventListener(
         scoreElement.textContent =
             "0";
 
+
+        score = 0;
+
+        combo = 0;
+
+        timeLeft =
+            GAME_DURATION;
+
     }
 );
 
 
 /* =========================================================
-   39. LEADERBOARD
+   46. LEADERBOARD
 ========================================================= */
 
 leaderboardButton.addEventListener(
@@ -2667,14 +3496,13 @@ async function openLeaderboard() {
         leaderboardScreen
     );
 
-
     await loadLeaderboard();
 
 }
 
 
 /* =========================================================
-   40. LOAD LEADERBOARD
+   47. LOAD LEADERBOARD
 ========================================================= */
 
 async function loadLeaderboard() {
@@ -2865,7 +3693,7 @@ async function loadLeaderboard() {
 
 
 /* =========================================================
-   41. LEADERBOARD BACK
+   48. LEADERBOARD BACK
 ========================================================= */
 
 leaderboardBackButton.addEventListener(
@@ -2881,7 +3709,7 @@ leaderboardBackButton.addEventListener(
 
 
 /* =========================================================
-   42. ADMIN
+   49. ADMIN
 ========================================================= */
 
 adminButton.addEventListener(
@@ -2910,7 +3738,7 @@ adminButton.addEventListener(
 
 
 /* =========================================================
-   43. LOAD ADMIN USERS
+   50. LOAD ADMIN USERS
 ========================================================= */
 
 async function loadAdminUsers() {
@@ -2988,8 +3816,6 @@ async function loadAdminUsers() {
                 );
 
 
-            /* USERNAME */
-
             const usernameCell =
                 document.createElement(
                     "td"
@@ -2998,8 +3824,6 @@ async function loadAdminUsers() {
             usernameCell.textContent =
                 user.username;
 
-
-            /* ROLE */
 
             const roleCell =
                 document.createElement(
@@ -3028,16 +3852,13 @@ async function loadAdminUsers() {
                             "option"
                         );
 
-
                     option.value =
                         role;
-
 
                     option.textContent =
                         role === "admin"
                             ? "Admin"
                             : "Player";
-
 
                     if (
                         user.role ===
@@ -3049,7 +3870,6 @@ async function loadAdminUsers() {
 
                     }
 
-
                     roleSelect.appendChild(
                         option
                     );
@@ -3057,8 +3877,6 @@ async function loadAdminUsers() {
                 }
             );
 
-
-            /* STATUS */
 
             const statusCell =
                 document.createElement(
@@ -3081,7 +3899,6 @@ async function loadAdminUsers() {
                     "option"
                 );
 
-
             activeOption.value =
                 "true";
 
@@ -3093,7 +3910,6 @@ async function loadAdminUsers() {
                 document.createElement(
                     "option"
                 );
-
 
             lockedOption.value =
                 "false";
@@ -3117,8 +3933,6 @@ async function loadAdminUsers() {
                 );
 
 
-            /* BEST SCORE */
-
             const scoreCell =
                 document.createElement(
                     "td"
@@ -3127,8 +3941,6 @@ async function loadAdminUsers() {
             scoreCell.textContent =
                 user.best_score || 0;
 
-
-            /* GAMES */
 
             const gamesCell =
                 document.createElement(
@@ -3139,101 +3951,92 @@ async function loadAdminUsers() {
                 user.total_games || 0;
 
 
-          /* ACTION */
-
-const actionCell =
-    document.createElement(
-        "td"
-    );
+            const actionCell =
+                document.createElement(
+                    "td"
+                );
 
 
-/* =========================
-   NÚT LƯU
-========================= */
-
-const saveButton =
-    document.createElement(
-        "button"
-    );
+            const saveButton =
+                document.createElement(
+                    "button"
+                );
 
 
-saveButton.type =
-    "button";
+            saveButton.type =
+                "button";
 
-saveButton.className =
-    "admin-save-button";
+            saveButton.className =
+                "admin-save-button";
 
-saveButton.textContent =
-    "Lưu";
-
-
-saveButton.addEventListener(
-    "click",
-    async function () {
-
-        await updateAdminUser(
-            user.id,
-            roleSelect.value,
-            statusSelect.value === "true"
-        );
-
-    }
-);
+            saveButton.textContent =
+                "Lưu";
 
 
-/* =========================
-   NÚT XÓA
-========================= */
+            saveButton.addEventListener(
+                "click",
+                async function () {
 
-const deleteButton =
-    document.createElement(
-        "button"
-    );
+                    await updateAdminUser(
+                        user.id,
+                        roleSelect.value,
+                        statusSelect.value === "true"
+                    );
 
-
-deleteButton.type =
-    "button";
-
-deleteButton.className =
-    "delete-user-button";
-
-deleteButton.textContent =
-    "🗑️ Xóa";
-
-
-deleteButton.addEventListener(
-    "click",
-    async function () {
-
-        const confirmed =
-            confirm(
-                `Bạn có chắc muốn xóa tài khoản "${user.username}"?\n\nTất cả điểm số và dữ liệu của tài khoản này cũng sẽ bị xóa.`
+                }
             );
 
 
-        if (!confirmed) {
-            return;
-        }
+            const deleteButton =
+                document.createElement(
+                    "button"
+                );
 
 
-        await deleteAdminUser(
-            user.id,
-            user.username
-        );
+            deleteButton.type =
+                "button";
 
-    }
-);
+            deleteButton.className =
+                "delete-user-button";
+
+            deleteButton.textContent =
+                "🗑️ Xóa";
 
 
-/* THÊM 2 NÚT VÀO Ô ACTION */
+            deleteButton.addEventListener(
+                "click",
+                async function () {
 
-actionCell.appendChild(
-    saveButton
-);
+                    const confirmed =
+                        confirm(
+                            `Bạn có chắc muốn xóa tài khoản "${user.username}"?\n\nTất cả điểm số và dữ liệu của tài khoản này cũng sẽ bị xóa.`
+                        );
 
-actionCell.appendChild(
-    deleteButton
-);
+
+                    if (!confirmed) {
+
+                        return;
+
+                    }
+
+
+                    await deleteAdminUser(
+                        user.id,
+                        user.username
+                    );
+
+                }
+            );
+
+
+            actionCell.appendChild(
+                saveButton
+            );
+
+            actionCell.appendChild(
+                deleteButton
+            );
+
 
             row.appendChild(
                 usernameCell
@@ -3260,10 +4063,6 @@ actionCell.appendChild(
             );
 
 
-            /*
-               KHÔNG CHO TỰ KHÓA
-            */
-
             if (
                 user.id ===
                 currentUser.id
@@ -3276,6 +4075,9 @@ actionCell.appendChild(
                     true;
 
                 saveButton.disabled =
+                    true;
+
+                deleteButton.disabled =
                     true;
 
             }
@@ -3301,7 +4103,7 @@ actionCell.appendChild(
 
 
 /* =========================================================
-   44. UPDATE ADMIN USER
+   51. UPDATE ADMIN USER
 ========================================================= */
 
 async function updateAdminUser(
@@ -3357,8 +4159,9 @@ async function updateAdminUser(
 
 }
 
+
 /* =========================================================
-   DELETE ADMIN USER
+   52. DELETE ADMIN USER
 ========================================================= */
 
 async function deleteAdminUser(
@@ -3415,10 +4218,6 @@ async function deleteAdminUser(
             `✅ Đã xóa tài khoản "${username}".`;
 
 
-        /*
-           Tải lại danh sách admin
-        */
-
         await loadAdminUsers();
 
 
@@ -3436,8 +4235,10 @@ async function deleteAdminUser(
     }
 
 }
+
+
 /* =========================================================
-   45. ADMIN BACK
+   53. ADMIN BACK
 ========================================================= */
 
 adminBackButton.addEventListener(
@@ -3453,7 +4254,7 @@ adminBackButton.addEventListener(
 
 
 /* =========================================================
-   46. LOGOUT
+   54. LOGOUT
 ========================================================= */
 
 logoutButton.addEventListener(
@@ -3492,7 +4293,7 @@ logoutButton.addEventListener(
 
 
 /* =========================================================
-   47. STOP GAME
+   55. STOP GAME
 ========================================================= */
 
 function stopGame() {
@@ -3510,29 +4311,23 @@ function stopGame() {
         chickenTimer
     );
 
+    clearTimeout(
+        frenzyTimer
+    );
+
 
     gameTimer = null;
 
     chickenTimer = null;
 
+    frenzyTimer = null;
 
-    /*
-       DỪNG NHẠC
-    */
 
     stopBackgroundMusic();
 
 
-    /*
-       XÓA GÀ
-    */
-
     removeAllChickens();
 
-
-    /*
-       XÓA CÂU HỎI
-    */
 
     document
         .querySelectorAll(
@@ -3543,11 +4338,24 @@ function stopGame() {
                 item.remove()
         );
 
+
+    document
+        .querySelectorAll(
+            ".game-message, .score-popup, .hit-hand, .hit-explosion, .hit-particle"
+        )
+        .forEach(
+            item =>
+                item.remove()
+        );
+
+
+    combo = 0;
+
 }
 
 
 /* =========================================================
-   48. SUPABASE AUTH STATE
+   56. SUPABASE AUTH STATE
 ========================================================= */
 
 async function initAuth() {
@@ -3558,12 +4366,10 @@ async function initAuth() {
             authScreen
         );
 
-
         showAuthMessage(
             "Hãy điền SUPABASE_URL và SUPABASE_PUBLISHABLE_KEY trong script.js.",
             "error"
         );
-
 
         return;
 
@@ -3588,7 +4394,8 @@ async function initAuth() {
 
         await loadCurrentUser();
 
-    } else {
+    }
+    else {
 
         showScreen(
             authScreen
@@ -3640,7 +4447,7 @@ async function initAuth() {
 
 
 /* =========================================================
-   49. START
+   57. START
 ========================================================= */
 
 document.addEventListener(
