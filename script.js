@@ -12,13 +12,6 @@
    - Gà bám theo beat của nhạc
    - Cuối game tăng tốc mạnh
 ========================================================= */
-<button class="delete-user-button">🗑️ Xóa</button>
-const { error } = await supabaseClient.rpc(
-    "admin_delete_profile",
-    {
-        target_user_id: userId
-    }
-);
 /* =========================================================
    1. SUPABASE CONFIG
 ========================================================= */
@@ -3146,50 +3139,101 @@ async function loadAdminUsers() {
                 user.total_games || 0;
 
 
-            /* ACTION */
+          /* ACTION */
 
-            const actionCell =
-                document.createElement(
-                    "td"
-                );
-
-
-            const saveButton =
-                document.createElement(
-                    "button"
-                );
+const actionCell =
+    document.createElement(
+        "td"
+    );
 
 
-            saveButton.type =
-                "button";
+/* =========================
+   NÚT LƯU
+========================= */
+
+const saveButton =
+    document.createElement(
+        "button"
+    );
 
 
-            saveButton.className =
-                "admin-save-button";
+saveButton.type =
+    "button";
+
+saveButton.className =
+    "admin-save-button";
+
+saveButton.textContent =
+    "Lưu";
 
 
-            saveButton.textContent =
-                "Lưu";
+saveButton.addEventListener(
+    "click",
+    async function () {
+
+        await updateAdminUser(
+            user.id,
+            roleSelect.value,
+            statusSelect.value === "true"
+        );
+
+    }
+);
 
 
-            saveButton.addEventListener(
-                "click",
-                async function () {
+/* =========================
+   NÚT XÓA
+========================= */
 
-                    await updateAdminUser(
-                        user.id,
-                        roleSelect.value,
-                        statusSelect.value === "true"
-                    );
+const deleteButton =
+    document.createElement(
+        "button"
+    );
 
-                }
+
+deleteButton.type =
+    "button";
+
+deleteButton.className =
+    "delete-user-button";
+
+deleteButton.textContent =
+    "🗑️ Xóa";
+
+
+deleteButton.addEventListener(
+    "click",
+    async function () {
+
+        const confirmed =
+            confirm(
+                `Bạn có chắc muốn xóa tài khoản "${user.username}"?\n\nTất cả điểm số và dữ liệu của tài khoản này cũng sẽ bị xóa.`
             );
 
 
-            actionCell.appendChild(
-                saveButton
-            );
+        if (!confirmed) {
+            return;
+        }
 
+
+        await deleteAdminUser(
+            user.id,
+            user.username
+        );
+
+    }
+);
+
+
+/* THÊM 2 NÚT VÀO Ô ACTION */
+
+actionCell.appendChild(
+    saveButton
+);
+
+actionCell.appendChild(
+    deleteButton
+);
 
             row.appendChild(
                 usernameCell
@@ -3313,7 +3357,85 @@ async function updateAdminUser(
 
 }
 
+/* =========================================================
+   DELETE ADMIN USER
+========================================================= */
 
+async function deleteAdminUser(
+    userId,
+    username
+) {
+
+    adminMessage.textContent =
+        `Đang xóa tài khoản "${username}"...`;
+
+
+    if (!supabaseClient) {
+
+        adminMessage.textContent =
+            "❌ Chưa kết nối Supabase.";
+
+        return;
+
+    }
+
+
+    try {
+
+        const {
+            error
+        } =
+            await supabaseClient.rpc(
+                "admin_delete_profile",
+                {
+                    target_user_id:
+                        userId
+                }
+            );
+
+
+        if (error) {
+
+            console.error(
+                "Delete user error:",
+                error
+            );
+
+
+            adminMessage.textContent =
+                "❌ Không thể xóa tài khoản: " +
+                error.message;
+
+            return;
+
+        }
+
+
+        adminMessage.textContent =
+            `✅ Đã xóa tài khoản "${username}".`;
+
+
+        /*
+           Tải lại danh sách admin
+        */
+
+        await loadAdminUsers();
+
+
+    } catch (error) {
+
+        console.error(
+            "Delete user error:",
+            error
+        );
+
+
+        adminMessage.textContent =
+            "❌ Có lỗi khi xóa tài khoản.";
+
+    }
+
+}
 /* =========================================================
    45. ADMIN BACK
 ========================================================= */
