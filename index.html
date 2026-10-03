@@ -1,31 +1,55 @@
+```html
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
+
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
     <title>Chưởng Gà</title>
 
-    <link rel="stylesheet" href="style.css">
+    <link
+        rel="stylesheet"
+        href="style.css"
+    >
 
     <!-- Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 </head>
 
+
 <body>
+
 
 <!-- =========================================================
      AUTH SCREEN
 ========================================================= -->
 
-<section id="authScreen" class="screen active">
+<section
+    id="authScreen"
+    class="screen active"
+>
 
     <div class="auth-background">
 
-        <div class="auth-sun">☀️</div>
+        <div class="auth-sun">
+            ☀️
+        </div>
 
-        <div class="auth-cloud cloud-1">☁️</div>
-        <div class="auth-cloud cloud-2">☁️</div>
+        <div class="auth-cloud cloud-1">
+            ☁️
+        </div>
+
+        <div class="auth-cloud cloud-2">
+            ☁️
+        </div>
+
 
         <div class="auth-container">
 
@@ -33,7 +57,11 @@
                 🐔
             </div>
 
-            <h1>CHƯỞNG GÀ</h1>
+
+            <h1>
+                CHƯỞNG GÀ
+            </h1>
+
 
             <p class="auth-subtitle">
                 Ai chưởng nhanh hơn?
@@ -42,7 +70,10 @@
 
             <div class="auth-card">
 
-                <!-- TAB -->
+
+                <!-- =================================================
+                     AUTH TABS
+                ================================================== -->
 
                 <div class="auth-tabs">
 
@@ -53,6 +84,7 @@
                     >
                         ĐĂNG NHẬP
                     </button>
+
 
                     <button
                         id="registerTab"
@@ -65,8 +97,9 @@
                 </div>
 
 
+
                 <!-- =================================================
-                     LOGIN
+                     LOGIN FORM
                 ================================================== -->
 
                 <form
@@ -119,8 +152,9 @@
                 </form>
 
 
+
                 <!-- =================================================
-                     REGISTER
+                     REGISTER FORM
                 ================================================== -->
 
                 <form
@@ -222,29 +256,75 @@
     class="screen hidden"
 >
 
-    <!-- TOP BAR -->
+
+    <!-- =====================================================
+         NEW ARCADE HEADER
+    ====================================================== -->
 
     <header class="game-topbar">
 
-        <div class="game-logo">
-            🐔 CHƯỞNG GÀ
+
+        <!-- =================================================
+             BRAND
+        ================================================== -->
+
+        <div class="game-brand">
+
+            <div class="brand-chicken">
+                🐔
+            </div>
+
+
+            <div class="brand-text">
+
+                <div class="brand-title">
+                    CHƯỞNG GÀ
+                </div>
+
+                <div class="brand-subtitle">
+                    CHICKEN BATTLE
+                </div>
+
+            </div>
+
         </div>
 
 
+
+        <!-- =================================================
+             SCORE + TIMER
+        ================================================== -->
+
         <div class="game-stats">
 
-            <div class="stat-box">
+
+            <!-- SCORE -->
+
+            <div class="stat-box score-box">
 
                 <span class="stat-icon">
                     ⭐
                 </span>
 
-                <span id="score">
-                    0
-                </span>
+
+                <div class="stat-content">
+
+                    <span class="stat-label">
+                        ĐIỂM
+                    </span>
+
+
+                    <span id="score">
+                        0
+                    </span>
+
+                </div>
 
             </div>
 
+
+
+            <!-- TIMER -->
 
             <div class="stat-box timer-box">
 
@@ -252,49 +332,117 @@
                     ⏱️
                 </span>
 
-                <span id="timer">
-                    60
-                </span>
+
+                <div class="stat-content">
+
+                    <span class="stat-label">
+                        THỜI GIAN
+                    </span>
+
+
+                    <span id="timer">
+                        60
+                    </span>
+
+                </div>
 
             </div>
 
         </div>
 
 
-        <!-- ACCOUNT -->
+
+        <!-- =================================================
+             ACCOUNT
+        ================================================== -->
 
         <div class="account-area">
 
-            <span id="currentUsername">
-                Player
-            </span>
+
+            <!-- PLAYER -->
+
+            <div class="player-badge">
+
+                <span class="player-icon">
+                    👤
+                </span>
 
 
-            <button
-                id="leaderboardButton"
-                class="small-button"
-                type="button"
-            >
-                🏆 BXH
-            </button>
+                <div class="player-info">
+
+                    <span class="player-label">
+                        PLAYER
+                    </span>
 
 
-            <button
-                id="adminButton"
-                class="small-button admin-button hidden"
-                type="button"
-            >
-                ⚙️ ADMIN
-            </button>
+                    <span id="currentUsername">
+                        Player
+                    </span>
+
+                </div>
+
+            </div>
 
 
-            <button
-                id="logoutButton"
-                class="small-button logout-button"
-                type="button"
-            >
-                Thoát
-            </button>
+
+            <!-- BUTTONS -->
+
+            <div class="account-actions">
+
+
+                <!-- LEADERBOARD -->
+
+                <button
+                    id="leaderboardButton"
+                    class="small-button leaderboard-button"
+                    type="button"
+                >
+
+                    🏆
+
+                    <span>
+                        BXH
+                    </span>
+
+                </button>
+
+
+
+                <!-- ADMIN -->
+
+                <button
+                    id="adminButton"
+                    class="small-button admin-button hidden"
+                    type="button"
+                >
+
+                    ⚙️
+
+                    <span>
+                        ADMIN
+                    </span>
+
+                </button>
+
+
+
+                <!-- LOGOUT -->
+
+                <button
+                    id="logoutButton"
+                    class="small-button logout-button"
+                    type="button"
+                >
+
+                    ↪
+
+                    <span>
+                        THOÁT
+                    </span>
+
+                </button>
+
+            </div>
 
         </div>
 
@@ -302,30 +450,37 @@
 
 
 
-    <!-- =================================================
+    <!-- =====================================================
          GAME AREA
-    ================================================== -->
+    ====================================================== -->
 
     <main
         id="gameArea"
         class="game-area"
     >
 
-        <!-- SKY -->
+
+        <!-- =================================================
+             SKY
+        ================================================== -->
 
         <div class="game-sky">
+
 
             <div class="sun">
                 ☀️
             </div>
 
+
             <div class="cloud cloud-a">
                 ☁️
             </div>
 
+
             <div class="cloud cloud-b">
                 ☁️
             </div>
+
 
             <div class="cloud cloud-c">
                 ☁️
@@ -334,7 +489,10 @@
         </div>
 
 
-        <!-- MOUNTAINS -->
+
+        <!-- =================================================
+             MOUNTAINS
+        ================================================== -->
 
         <div class="mountains">
 
@@ -347,17 +505,24 @@
         </div>
 
 
-        <!-- GRASS -->
+
+        <!-- =================================================
+             GRASS
+        ================================================== -->
 
         <div class="grass"></div>
 
 
-        <!-- START MESSAGE -->
+
+        <!-- =================================================
+             START MESSAGE
+        ================================================== -->
 
         <div
             id="startMessage"
             class="start-message"
         >
+
 
             <div class="start-chicken">
                 🐔
@@ -393,17 +558,22 @@
 
 
 
-    <!-- GAME INFO -->
+    <!-- =====================================================
+         GAME INFO
+    ====================================================== -->
 
     <div class="game-bottom">
+
 
         <span>
             🐔 Chạm vào gà → trả lời câu hỏi
         </span>
 
+
         <span>
             ⭐ Trả lời đúng = +1 điểm
         </span>
+
 
         <span>
             ⏱️ Thời gian: 60 giây
@@ -424,7 +594,9 @@
     class="screen hidden"
 >
 
+
     <div class="result-card">
+
 
         <div class="result-chicken">
             🐔
@@ -447,6 +619,7 @@
                 ĐIỂM CỦA BẠN
             </span>
 
+
             <strong id="finalScore">
                 0
             </strong>
@@ -461,6 +634,7 @@
 
 
         <div class="result-actions">
+
 
             <button
                 id="playAgainButton"
@@ -496,7 +670,11 @@
     class="screen hidden"
 >
 
+
     <div class="panel-card leaderboard-card">
+
+
+        <!-- HEADER -->
 
         <div class="panel-header">
 
@@ -506,9 +684,11 @@
                     🏆
                 </span>
 
+
                 <h1>
                     BẢNG XẾP HẠNG
                 </h1>
+
 
                 <p>
                     Những cao thủ Chưởng Gà
@@ -528,9 +708,13 @@
         </div>
 
 
+
+        <!-- TABLE -->
+
         <div class="leaderboard-table-wrapper">
 
             <table class="leaderboard-table">
+
 
                 <thead>
 
@@ -540,13 +724,16 @@
                             #
                         </th>
 
+
                         <th>
                             Người chơi
                         </th>
 
+
                         <th>
                             Điểm cao nhất
                         </th>
+
 
                         <th>
                             Số trận
@@ -588,7 +775,11 @@
     class="screen hidden"
 >
 
+
     <div class="panel-card admin-card">
+
+
+        <!-- HEADER -->
 
         <div class="panel-header">
 
@@ -598,9 +789,11 @@
                     ⚙️
                 </span>
 
+
                 <h1>
                     QUẢN TRỊ
                 </h1>
+
 
                 <p>
                     Quản lý tài khoản người chơi
@@ -620,15 +813,22 @@
         </div>
 
 
+
+        <!-- ADMIN MESSAGE -->
+
         <div
             id="adminMessage"
             class="admin-message"
         ></div>
 
 
+
+        <!-- ADMIN TABLE -->
+
         <div class="admin-table-wrapper">
 
             <table class="admin-table">
+
 
                 <thead>
 
@@ -638,21 +838,26 @@
                             Username
                         </th>
 
+
                         <th>
                             Quyền
                         </th>
+
 
                         <th>
                             Trạng thái
                         </th>
 
+
                         <th>
                             Điểm cao nhất
                         </th>
 
+
                         <th>
                             Số trận
                         </th>
+
 
                         <th>
                             Thao tác
@@ -691,5 +896,8 @@
 
 <script src="script.js"></script>
 
+
 </body>
+
 </html>
+```
