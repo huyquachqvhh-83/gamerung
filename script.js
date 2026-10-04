@@ -37,8 +37,8 @@ let supabaseClient = null;
 
 if (
     window.supabase &&
-    SUPABASE_URL !== "https://qlrtgivtgvlnvkibqtej.supabase.co" &&
-    SUPABASE_PUBLISHABLE_KEY !== "sb_publishable_7isDs5a45y__a6zPgKJjMQ_boGU73Uu"
+    SUPABASE_URL &&
+    SUPABASE_PUBLISHABLE_KEY
 ) {
 
     supabaseClient =
