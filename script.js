@@ -26,10 +26,10 @@
 ========================================================= */
 
 const SUPABASE_URL =
-    "GIU_NGUYEN_SUPABASE_URL_CUA_BAN";
+    "qlrtgivtgvlnvkibqtej";
 
 const SUPABASE_PUBLISHABLE_KEY =
-    "GIU_NGUYEN_SUPABASE_PUBLISHABLE_KEY_CUA_BAN";
+    "sb_publishable_7isDs5a45y__a6zPgKJjMQ_boGU73Uu";
 
 
 let supabaseClient = null;
@@ -37,8 +37,8 @@ let supabaseClient = null;
 
 if (
     window.supabase &&
-    SUPABASE_URL !== "GIU_NGUYEN_SUPABASE_URL_CUA_BAN" &&
-    SUPABASE_PUBLISHABLE_KEY !== "GIU_NGUYEN_SUPABASE_PUBLISHABLE_KEY_CUA_BAN"
+    SUPABASE_URL !== "qlrtgivtgvlnvkibqtej" &&
+    SUPABASE_PUBLISHABLE_KEY !== "sb_publishable_7isDs5a45y__a6zPgKJjMQ_boGU73Uu"
 ) {
 
     supabaseClient =
