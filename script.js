@@ -26,7 +26,7 @@
 ========================================================= */
 
 const SUPABASE_URL =
-    "qlrtgivtgvlnvkibqtej";
+    "https://qlrtgivtgvlnvkibqtej.supabase.co";
 
 const SUPABASE_PUBLISHABLE_KEY =
     "sb_publishable_7isDs5a45y__a6zPgKJjMQ_boGU73Uu";
@@ -37,7 +37,7 @@ let supabaseClient = null;
 
 if (
     window.supabase &&
-    SUPABASE_URL !== "qlrtgivtgvlnvkibqtej" &&
+    SUPABASE_URL !== "https://qlrtgivtgvlnvkibqtej.supabase.co" &&
     SUPABASE_PUBLISHABLE_KEY !== "sb_publishable_7isDs5a45y__a6zPgKJjMQ_boGU73Uu"
 ) {
 
